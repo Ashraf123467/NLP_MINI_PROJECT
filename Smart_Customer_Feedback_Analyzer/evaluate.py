@@ -5,12 +5,27 @@ Trains/evaluates the sentiment classification pipeline on `sentiment-analysis.cs
 Generates:
 1. outputs/evaluation_report.txt
 2. outputs/confusion_matrix.png
+Also verifies all linguistic components (Preprocessing, Morphology, N-Grams, POS/Chunking, NER, Word Generation).
 """
 
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
-from analyzer import load_dataset, train_model, get_top_features
+from analyzer import (
+    load_dataset,
+    train_model,
+    get_top_features,
+    get_preprocessing_pipeline_breakdown,
+    calculate_ngram_probabilities,
+    get_corpus_top_ngrams
+)
+from lab_features import (
+    extract_pos_tags,
+    extract_syntactic_chunks,
+    analyze_entities,
+    analyze_morphology,
+    generate_word_forms
+)
 
 
 def run_evaluation(
@@ -42,10 +57,10 @@ def run_evaluation(
 
     # 1. Generate text evaluation report
     report_content = []
-    report_content.append("=" * 70)
+    report_content.append("=" * 75)
     report_content.append(" SMART CUSTOMER FEEDBACK & SENTIMENT ANALYZER")
-    report_content.append(" Model Evaluation & Performance Report")
-    report_content.append("=" * 70)
+    report_content.append(" Model Evaluation & Linguistic Capabilities Report")
+    report_content.append("=" * 75)
     report_content.append("")
     report_content.append("1. DATASET SUMMARY")
     report_content.append(f"   - Dataset File: {os.path.basename(data_path)}")
@@ -84,18 +99,31 @@ def run_evaluation(
     report_content.append(f"   - True Positive:  {cm[1][1] if cm.shape[0] > 1 and cm.shape[1] > 1 else 0}")
     report_content.append("")
     report_content.append("6. TOP INFLUENTIAL N-GRAM FEATURES (FEATURE IMPORTANCE)")
-    top_features = get_top_features(results["pipeline"], n_top=10)
+    top_features = get_top_features(results["pipeline"], n_top=8)
     for cls_name, feats in top_features.items():
         report_content.append(f"   Class '{cls_name}':")
         for term, weight in feats:
-            report_content.append(f"      * {term:<20} (Weight: {weight:+.4f})")
+            report_content.append(f"      * {term:<22} (Weight: {weight:+.4f})")
     report_content.append("")
-    report_content.append("7. ACADEMIC NOTES FOR VIVA")
-    report_content.append("   - Dataset represents real customer feedback across multiple digital platforms.")
-    report_content.append("   - High test accuracy reflects distinct emotional lexicons in the curated dataset.")
-    report_content.append("   - Stratified splitting guarantees that class proportions are preserved in test sets.")
-    report_content.append("   - Preserving negations is critical: 'not good' vs 'good' are separated via bigrams.")
-    report_content.append("=" * 70)
+    report_content.append("7. LINGUISTIC PIPELINE VERIFICATION")
+    sample_text = "I loved the movie! The customer service was not good."
+    prep = get_preprocessing_pipeline_breakdown(sample_text)
+    pos = extract_pos_tags(sample_text)
+    chunks = extract_syntactic_chunks(sample_text)
+    ngram_eval = calculate_ngram_probabilities(df["Text"].tolist(), sample_text, n=2)
+    ner_eval = analyze_entities(sample_text)
+    morph_eval = analyze_morphology("unhappiness")
+    word_gen_eval = generate_word_forms("study")
+
+    report_content.append(f"   - Sample Text: '{sample_text}'")
+    report_content.append(f"   - Preprocessing: Tokens={len(prep['word_tokens'])}, Stemmed={prep['stemmed_tokens']}")
+    report_content.append(f"   - POS Tags Extracted: {len(pos)} tokens tagged")
+    report_content.append(f"   - Syntactic Chunks Extracted: {[c['phrase'] for c in chunks['chunks']]}")
+    report_content.append(f"   - N-Gram Perplexity: {ngram_eval['perplexity']} (Vocab: {ngram_eval['vocab_size']})")
+    report_content.append(f"   - Named Entities: {len(ner_eval['entities'])} detected")
+    report_content.append(f"   - Morphology: Root of 'unhappiness' -> '{morph_eval['root_candidate']}' ({morph_eval['morphology_type']})")
+    report_content.append(f"   - Word Generation for 'study': {list(word_gen_eval['forms'].values())[:4]}")
+    report_content.append("=" * 75)
 
     report_str = "\n".join(report_content)
     with open(report_path, "w", encoding="utf-8") as f:
@@ -129,4 +157,3 @@ def run_evaluation(
 
 if __name__ == "__main__":
     run_evaluation()
-

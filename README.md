@@ -1,8 +1,8 @@
 # Smart Customer Feedback & Sentiment Analyzer
 
 > **B.Tech Computer Science and Engineering (Artificial Intelligence)**  
-> **Natural Language Processing Laboratory Project**  
-> **Course Experiments Implemented:** Experiment 05 (Named Entity Recognition) & Experiment 06 (Morphological Analysis and Word Generation)
+> **Course:** Natural Language Processing (Laboratory & Mini Project)  
+> **Curriculum Integration:** Complete Mapping to Laboratory Experiments 01 through 06
 
 ---
 
@@ -10,12 +10,14 @@
 
 In modern customer-centric businesses, consumer reviews and feedback arrive in vast volumes across multiple digital channels such as e-commerce platforms, app stores, social media, and customer support portals. Manually triaging and analyzing these reviews is labor-intensive, error-prone, and slow. 
 
-The **Smart Customer Feedback & Sentiment Analyzer** is an end-to-end NLP and machine learning software system developed using Python, Scikit-Learn, spaCy, and Streamlit. The system takes raw, unstructured customer feedback and performs:
-1. Sentiment classification (`Positive` vs. `Negative`) with confidence scoring.
-2. Rule-based customer issue categorization.
-3. Named Entity Recognition (Lab Exp 05) to extract brands, locations, dates, and amounts.
-4. Morphological decomposition and rule-based word generation (Lab Exp 06).
-5. Interactive visualization of real dataset patterns and batch CSV prediction.
+The **Smart Customer Feedback & Sentiment Analyzer** is an end-to-end NLP and machine learning software system developed using Python, Scikit-Learn, spaCy, NLTK, and Streamlit. The system takes raw, unstructured customer feedback and performs:
+1. Multi-stage text preprocessing (script validation, filtration, tokenization, negation-preserving stopword filtering, stemming).
+2. Lexical & morphological decomposition (free vs. bound morphemes, inflectional vs. derivational morphology) and orthographic word generation.
+3. Statistical N-Gram language modeling and perplexity/likelihood calculation.
+4. Syntactic analysis (Part-of-Speech tagging and shallow phrase chunking for noun/verb phrases).
+5. Information extraction via statistical Named Entity Recognition (NER) and regex heuristics.
+6. Explainable sentiment classification (`Positive` vs. `Negative`) with confidence scoring.
+7. Real dataset visualization and high-throughput batch CSV processing.
 
 The project is built around the verified primary dataset **`sentiment-analysis.csv`**, guaranteeing reproducibility and real-world analytical validity without synthetic or hardcoded data.
 
@@ -24,21 +26,26 @@ The project is built around the verified primary dataset **`sentiment-analysis.c
 ## 2. Problem Statement
 
 Organizations struggle to process feedback efficiently due to:
-- **Linguistic Ambiguity:** Reviews contain informal slang, contractions, and critical negation words (e.g., "not happy", "hardly useful"). Naive text preprocessing often strips negation words, leading to misclassification.
+- **Linguistic Ambiguity & Negation Loss:** Reviews contain informal slang, contractions, and critical negation words (e.g., "not happy", "never arrived"). Naive text preprocessing often strips negation words, inverting the sentiment polarity.
 - **Unstructured Entity Information:** Reviews mention specific products, dates, transaction amounts, and regional stores, but standard classifiers treat text purely as bag-of-words without identifying key entities.
-- **Data Encapsulation Noise:** Real-world datasets often suffer from formatting anomalies (e.g., lines wrapped in outer quotation marks, escaped inner quotes).
+- **Syntactic Ignorance:** Classifiers often ignore grammatical roles (distinguishing the *target product* represented by noun phrases from the *evaluation* represented by adjectives and verbs).
+- **Data Encapsulation Noise:** Real-world datasets often suffer from formatting anomalies (e.g., rows wrapped in outer quotation marks and internal quotes).
 - **Lack of Interpretability:** Black-box deep learning models fail to explain *why* a customer review was flagged as negative, hindering viva demonstration and organizational trust.
 
 ---
 
-## 3. Project Objectives
+## 3. Academic Mapping: All Six NLP Laboratory Concepts
 
-1. **Robust Ingestion:** Accurately parse and normalize the verified primary dataset `sentiment-analysis.csv`.
-2. **Sentiment Classification:** Train an explainable machine learning pipeline using TF-IDF (unigrams + bigrams) and Logistic Regression with class-balanced weighting.
-3. **Preserve Negation Semantics:** Ensure custom stopword filtering retains words like `not`, `no`, `never`, and `n't`.
-4. **NLP Lab Experiment 05 Implementation:** Extract real-world named entities (`PERSON`, `ORG`, `GPE`, `DATE`, `MONEY`) using spaCy statistical models and comparative regex heuristics.
-5. **NLP Lab Experiment 06 Implementation:** Decompose English words into prefixes, roots, and suffixes; distinguish inflectional from derivational morphology; and generate inflected forms using spelling rules.
-6. **Interactive Dashboard:** Build a responsive Streamlit UI supporting single feedback inspection, batch CSV prediction, performance charts, and viva reference materials.
+As part of the academic curriculum for B.Tech CSE (Artificial Intelligence), this mini project demonstrates practical application of all six NLP laboratory experiments. While the customer-facing Streamlit UI presents these capabilities under clean, professional engineering headings, their formal academic mapping is documented below:
+
+| Exp No. | Exact Lab Manual Title | Project Feature / Module | Functions & Implementation Details | Role in Customer Feedback Intelligence | Viva-Friendly Summary |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| **01** | **Preprocessing of Text (Tokenization, Filtration, Script validation, Stop Word Removal, Stemming)** | `analyzer.py`<br>`app.py` (Preprocessing Breakdown Tab) | `validate_script()`<br>`filter_noise()`<br>`tokenize_feedback()`<br>`remove_stopwords_with_negation()`<br>`stem_tokens()` | Validates Latin script, filters URLs/noise, splits into word/sentence tokens, retains negation cues ('not', 'no', 'never'), and normalizes morphological word variations. | Converts noisy raw reviews into clean, normalized linguistic tokens while preventing sentiment inversion. |
+| **02** | **Morphological Analysis** | `lab_features.py`<br>`app.py` (Lexical & Word Analyzer) | `analyze_morphology()` | Analyzes words into Free Morphemes (independent roots) and Bound Morphemes (prefixes/suffixes); classifies morphological processes into Inflectional (grammatical) vs. Derivational (lexical shift). | Unpacks complex consumer terminology (e.g. 'unhappiness' $\rightarrow$ prefix `un-`, root `happy`, suffix `-ness`) to understand core complaint sentiment. |
+| **03** | **NGram Model** | `analyzer.py`<br>`app.py` (N-Gram Insights & Probability Tab) | `extract_ngrams()`<br>`calculate_ngram_probabilities()`<br>`get_corpus_top_ngrams()` | Constructs unigrams, bigrams, and trigrams. Computes Maximum Likelihood Estimation (MLE) and Laplace add-1 smoothed sentence probability and perplexity against the review corpus. | Captures co-occurring phrase context ('not good', 'terrible service', 'love product') beyond isolated words. |
+| **04** | **POS Tagging Chunking** | `lab_features.py`<br>`app.py` (POS Tagging & Chunks Tab) | `extract_pos_tags()`<br>`extract_syntactic_chunks()` | Assigns Penn Treebank POS tags (NN, VB, JJ, RB). Parses Noun Phrases (`NP: {<DT>?<JJ.*>*<NN.*>+}`) and Verb Phrases (`VP: {<VB.*><RB.*>*<VB.*>*}`). | Noun Phrases identify the customer's *target of evaluation* (e.g. 'the customer support'), while Verb Phrases capture their *experienced action* ('was disappointed'). |
+| **05** | **Name Entity Recognition** | `lab_features.py`<br>`app.py` (Entity & Phrase Extractor) | `extract_entities_spacy()`<br>`extract_entities_fallback()`<br>`analyze_entities()` | Uses spaCy `en_core_web_sm` to detect PERSON, ORG, GPE, DATE, MONEY. Provides regex fallback for comparative demonstration and generates displaCy visual annotations. | Extracts concrete entities (store locations, purchase dates, order IDs, product brands) for targeted issue escalation. |
+| **06** | **Virtual lab on Word Generator** | `lab_features.py`<br>`app.py` (Word Generation Tab) | `generate_word_forms()` | Generates inflected and derived word forms from base roots using formal orthographic rules: CVC consonant doubling (`stop` $\rightarrow$ `stopped`), consonant+y (`study` $\rightarrow$ `studies`), silent 'e' drop, and sibilant pluralization. | Generates linguistic variations of customer vocabulary to expand review matching coverage and normalize user queries. |
 
 ---
 
@@ -47,10 +54,11 @@ Organizations struggle to process feedback efficiently due to:
 | Dimension | Existing / Traditional Approaches | Proposed Smart Analyzer System |
 | :--- | :--- | :--- |
 | **Data Parsing** | Naive `pd.read_csv` fails on encapsulated quoted rows | Custom robust loader strips encapsulation and validates all 7 columns |
-| **Stopword Handling** | Global stopword lists remove "not", "no", "never" | Custom stopword pruning preserves negations and leverages bigrams |
-| **Sentiment Analysis** | Simple lexicon keyword counting or heavy black-box BERT | Explainable TF-IDF + Logistic Regression with feature weight inspection |
+| **Preprocessing** | Global stopword lists remove "not", "no", "never" | Custom stopword pruning preserves negations and leverages bigrams |
+| **N-Gram Modeling** | Ignored or limited to unigrams | Bigram/trigram statistical modeling with Laplace smoothing and perplexity |
+| **Syntax & Grammar** | Words treated purely as flat bag-of-words | Full POS tagging and shallow parsing into Noun/Verb phrase chunks |
 | **Entity Recognition** | Absent or unlinked to feedback analysis | Integrated spaCy statistical NER + fallback regex extractor (Lab 05) |
-| **Morphological Study** | Neglected in standard web apps | Dedicated interactive morphology dissection and word generator (Lab 06) |
+| **Morphological Study** | Neglected in standard web apps | Dedicated interactive morphology dissection and word generator (Labs 02 & 06) |
 | **Batch Processing** | Manual one-by-one testing | High-throughput batch CSV upload with summary metrics and export |
 
 ---
@@ -61,6 +69,7 @@ Organizations struggle to process feedback efficiently due to:
 - **Machine Learning & NLP:**
   - `scikit-learn`: TfidfVectorizer, LogisticRegression, Pipeline, train_test_split, evaluation metrics
   - `spaCy` (`en_core_web_sm`): Statistical Named Entity Recognition pipeline
+  - `nltk`: Tokenization, Penn Treebank POS tagging, RegexpParser phrase chunking, Porter stemmer, stopword filtering
   - `numpy`: Numerical vector processing
 - **Data Engineering & Analysis:**
   - `pandas`: DataFrames, aggregation, and batch processing
@@ -101,34 +110,36 @@ The raw CSV file encapsulated entire rows in outer quotation marks (`"Text, Sent
 ## 7. System Architecture
 
 ```
-+-------------------------------------------------------------------------+
-|                       Streamlit Frontend (app.py)                       |
-|   +-------------------+  +-------------------+  +--------------------+  |
-|   | Dashboard Overview|  | Single Prediction |  | Batch CSV Analysis |  |
-|   +-------------------+  +-------------------+  +--------------------+  |
-|   +-------------------+  +-------------------+  +--------------------+  |
-|   | Lab 05: NER Suite |  | Lab 06: Morphology|  | Model Evaluation   |  |
-|   +-------------------+  +-------------------+  +--------------------+  |
-+-------------------------------------------------------------------------+
-                                    |
-                    +---------------+---------------+
-                    |                               |
-                    v                               v
-+------------------------------------+  +---------------------------------+
-|     Core Pipeline (analyzer.py)    |  |     Lab Suite (lab_features.py) |
-|  - Custom Quote-Unwrapping Loader  |  |  - spaCy en_core_web_sm (NER)   |
-|  - Negation-Preserving Cleaner     |  |  - Regex Heuristic Fallback     |
-|  - TF-IDF Vectorizer (1-2 ngrams)  |  |  - Morphological Dissection     |
-|  - Logistic Regression Classifier  |  |  - Linguistic Word Generation   |
-+------------------------------------+  +---------------------------------+
-                    |                               |
-                    v                               v
-+------------------------------------+  +---------------------------------+
-| Primary Storage & Model Artifacts  |  | Evaluation & Visual Assets      |
-|  - data/sentiment-analysis.csv     |  |  - outputs/evaluation_report.txt|
-|  - models/sentiment_model.pkl      |  |  - outputs/confusion_matrix.png |
-|                                    |  |  - assets/project_logo.png      |
-+------------------------------------+  +---------------------------------+
++-----------------------------------------------------------------------------------+
+|                           Streamlit Frontend (app.py)                             |
+|  +--------------------+  +--------------------+  +------------------------------+ |
+|  | Dashboard Analytics|  | Single Prediction  |  | Batch CSV Processing         | |
+|  +--------------------+  +--------------------+  +------------------------------+ |
+|  +--------------------+  +--------------------+  +------------------------------+ |
+|  | Entity & Phrases   |  | Lexical & Word Lab |  | Performance & N-Gram Insights| |
+|  +--------------------+  +--------------------+  +------------------------------+ |
++-----------------------------------------------------------------------------------+
+                                          |
+                          +---------------+---------------+
+                          |                               |
+                          v                               v
++------------------------------------+  +-----------------------------------------+
+|      Core Engine (analyzer.py)     |  |       Linguistic Suite (lab_features.py)|
+|  - Quote-Unwrapping CSV Loader     |  |  - Penn Treebank POS Tagging            |
+|  - Multi-Stage Preprocessing:      |  |  - Syntactic Chunker (NP & VP Grammars) |
+|    * Script Validation             |  |  - spaCy Statistical NER & Regex Fallback|
+|    * Noise & Punctuation Filter    |  |  - Morpheme Analyzer (Free vs. Bound)   |
+|    * Tokenization & Negation Stems |  |  - Orthographic Word Generation Engine  |
+|  - Statistical N-Gram Language Model| +-----------------------------------------+
+|  - TF-IDF + Logistic Regression     |                   |
++------------------------------------+                   |
+                  |                                       v
+                  v                     +-----------------------------------------+
++------------------------------------+  | Generated Outputs & Artifacts           |
+| Primary Storage & Model Artifacts  |  |  - outputs/evaluation_report.txt        |
+|  - data/sentiment-analysis.csv     |  |  - outputs/confusion_matrix.png         |
+|  - models/sentiment_model.pkl      |  |  - assets/project_logo.png              |
++------------------------------------+  +-----------------------------------------+
 ```
 
 ---
@@ -136,76 +147,56 @@ The raw CSV file encapsulated entire rows in outer quotation marks (`"Text, Sent
 ## 8. Detailed Module Descriptions
 
 ### 1. `analyzer.py`
-- **`load_dataset(filepath)`**: Unwraps line-level outer quotes, parses CSV fields, renames columns to canonical formats, normalizes sentiment strings, and validates data types.
-- **`preprocess_text(text, preserve_negations=True)`**: Converts text to lowercase, strips URLs, expands contractions (`n't` -> `not`, `can't` -> `cannot`), removes noisy punctuation while keeping words distinct, and strips redundant whitespace. Negation words are preserved.
-- **`train_model(df, test_size=0.2, random_state=42)`**: Executes stratified splitting, fits the `Pipeline([('tfidf', vectorizer), ('clf', classifier)])`, computes metrics, and serializes the pipeline using `joblib`.
-- **`predict_sentiment(text, pipeline)`**: Computes class predictions, probability distributions, and confidence percentages.
-- **`detect_feedback_category(text)`**: Explainable rule-based keyword matcher that maps customer feedback into domains: *Customer Support, Product Quality, Delivery & Shipping, Website & Usability, Entertainment & Content, Hospitality & Dining*.
-- **`get_top_features(pipeline, n_top=10)`**: Inspects linear model weights to report the strongest positive and negative linguistic indicators.
+- **`load_dataset(filepath)`**: Robust parser handling outer-quoted rows and comma delimiters.
+- **`validate_script(text)`**: Verifies Latin/English script conformance and flags multi-script/non-ASCII anomalies.
+- **`filter_noise(text)`**: Removes URLs, non-alphanumeric noise, and expands contractions (`n't` -> `not`).
+- **`tokenize_feedback(text)`**: Produces word tokens and sentence tokens.
+- **`remove_stopwords_with_negation(tokens)`**: Removes common stopwords while preserving critical negation words (`not`, `no`, `never`).
+- **`stem_tokens(tokens)`**: Implements Porter Stemming for vocabulary normalization.
+- **`get_preprocessing_pipeline_breakdown(text)`**: Bundles all 5 preprocessing stages for transparent inspection.
+- **`extract_ngrams(tokens, n)`**: Extracts unigrams, bigrams, and trigrams.
+- **`calculate_ngram_probabilities(corpus, target_text)`**: Estimates sentence log-likelihood and perplexity with Laplace smoothing.
+- **`get_corpus_top_ngrams(df, n=2)`**: Identifies top bigram phrases across positive and negative feedback in the dataset.
+- **`train_model(df)`**: Stratified 80/20 train-test split, fitting `Pipeline([('tfidf', vectorizer), ('clf', classifier)])`.
+- **`predict_sentiment(text, pipeline)`**: Computes class predictions and posterior probabilities.
+- **`detect_feedback_category(text)`**: Rule-based keyword detector mapping feedback into domains.
+- **`get_top_features(pipeline)`**: Extracts top positive and negative linear regression weights.
 
 ### 2. `lab_features.py`
-- **`extract_entities_spacy(text)`**: Invokes spaCy `en_core_web_sm` to extract entity spans, labels, and descriptions, and generates displaCy HTML for inline visualization.
-- **`extract_entities_fallback(text)`**: Transparent rule-based regex fallback extracting currency, dates, emails, user handles, and order identifiers.
-- **`analyze_morphology(word)`**: Strips known prefixes and suffixes, reconstructs the base stem candidate, and categorizes the process as Inflectional or Derivational.
-- **`generate_word_forms(base_word)`**: Produces inflected and derived word forms applying English spelling rules (CVC doubling, consonant + y, silent 'e' drop, sibilant pluralization).
+- **`extract_pos_tags(text)`**: Penn Treebank POS tagging with high-level grammatical categorization (Noun, Verb, Adjective, Adverb).
+- **`extract_syntactic_chunks(text)`**: Shallow syntactic chunking extracting Noun Phrases (target products) and Verb Phrases (actions).
+- **`extract_entities_spacy(text)`**: Statistical NER using spaCy `en_core_web_sm` with displaCy HTML visualization.
+- **`extract_entities_fallback(text)`**: Rule-based regex fallback for dates, money, emails, user handles, and order IDs.
+- **`analyze_morphology(word)`**: Identifies Free Morphemes (roots) vs Bound Morphemes (prefixes/suffixes) and classifies Inflectional vs Derivational morphology.
+- **`generate_word_forms(base_word)`**: Linguistic word generation applying CVC doubling, consonant+y, silent 'e', and sibilant pluralization rules.
 
 ### 3. `evaluate.py`
-- Standalone execution script that trains/evaluates the model on `data/sentiment-analysis.csv`.
-- Generates `outputs/evaluation_report.txt` with formatted tables and metric summaries.
-- Produces `outputs/confusion_matrix.png` using Seaborn.
+- Standalone evaluation script generating `outputs/evaluation_report.txt` and `outputs/confusion_matrix.png`.
 
 ### 4. `app.py`
-- Responsive 7-page interactive Streamlit dashboard.
-- Includes quick-test preset buttons, progress bars, chart generation, file uploaders, and academic viva cards.
+- Professional 7-page interactive Streamlit dashboard.
 
 ---
 
-## 9. NLP Concepts Implemented
-
-### NLP Lab Experiment 05 — Named Entity Recognition (NER)
-- **Concept:** Information extraction subtask that locates and classifies named entities in unstructured text into pre-defined categories.
-- **Implementation:**
-  - Employs spaCy's statistical transition-based NER model (`en_core_web_sm`).
-  - Identifies entities: `PERSON` (customer/agent names), `ORG` (service providers like Amazon, Spotify), `GPE` (cities like London, Paris, New York), `DATE` (review dates), `MONEY` (prices and refunds).
-  - Generates interactive visual markup with spaCy displaCy.
-  - Demonstrates contrast with a Regex fallback heuristic for laboratory comparison.
-
-### NLP Lab Experiment 06 — Morphological Analysis and Word Generation
-- **Concept:** The study of the internal structure of words and the rules of word formation.
-- **Implementation (Part A - Morphological Analysis):**
-  - Identifies prefixes (`un-`, `dis-`, `re-`, `sub-`, etc.) and suffixes (`-ing`, `-ed`, `-ness`, `-tion`, `-ment`, etc.).
-  - Distinguishes **Inflectional Morphology** (modifies tense or number without changing part of speech) from **Derivational Morphology** (creates new words or alters lexical category).
-- **Implementation (Part B - Word Generation):**
-  - Generates 3rd person singular (`plays`, `studies`, `watches`), past tense (`played`, `studied`, `stopped`), present participle (`playing`, `studying`, `stopping`), agent nouns (`player`, `stopper`), and derivations.
-  - Implements formal orthographic rules:
-    - **CVC Doubling:** Words with Consonant-Vowel-Consonant endings double the final consonant before vowel suffixes (`stop` -> `stopped`, `stopping`).
-    - **Consonant + 'y':** Final 'y' preceded by a consonant converts to 'i' before '-es' and '-ed' (`study` -> `studies`, `studied`).
-    - **Silent 'e' Drop:** Final silent 'e' is dropped before vowel suffixes (`create` -> `creating`, `created`).
-    - **Sibilant Pluralization:** Words ending in sibilants (`s`, `ss`, `sh`, `ch`, `x`, `z`) append `-es` (`watch` -> `watches`).
-
----
-
-## 10. Machine Learning Algorithm & Pipeline
+## 9. Machine Learning Algorithm & Pipeline
 
 - **Feature Extraction:** **TF-IDF Vectorizer** (Term Frequency - Inverse Document Frequency)
   $$\text{TF-IDF}(t, d, D) = \text{TF}(t, d) \times \log\left(\frac{1 + |D|}{1 + |\{d \in D : t \in d\}|}\right) + 1$$
-  - `ngram_range=(1, 2)`: Captures both individual words and bigram phrases (e.g., "not good", "terrible service").
-  - `sublinear_tf=True`: Applies logarithmic sublinear scaling ($1 + \log(\text{TF})$) to prevent frequent words from dominating.
-  - `stop_words`: Customized list ensuring that negation words (`not`, `no`, `never`, `hardly`, `n't`) are never removed.
+  - `ngram_range=(1, 2)`: Captures unigrams and contextual bigrams.
+  - `sublinear_tf=True`: Logarithmic frequency scaling ($1 + \log(\text{TF})$).
+  - `stop_words`: Customized list preserving negation words.
 - **Classification Algorithm:** **Logistic Regression**
-  - Models the posterior probability of the positive class using the sigmoid function:
-    $$P(Y = \text{Positive} \mid X) = \frac{1}{1 + e^{-(\mathbf{w}^T \mathbf{x} + b)}}$$
-  - `C=1.0`: L2 regularization parameter preventing overfitting.
-  - `class_weight='balanced'`: Compensates for minor class imbalance by inversely weighting class frequencies.
-  - `random_state=42`: Assures exact academic reproducibility.
+  $$P(Y = \text{Positive} \mid X) = \frac{1}{1 + e^{-(\mathbf{w}^T \mathbf{x} + b)}}$$
+  - `C=1.0`: L2 regularization.
+  - `class_weight='balanced'`: Balances class representation.
+  - `random_state=42`: Assures academic reproducibility.
 
 ---
 
-## 11. Installation Instructions
+## 10. Installation & Execution Instructions
 
 ### Prerequisites
-- Python 3.10 or 3.11 installed on your system.
-- Git or extracted project archive.
+- Python 3.10 or 3.11 installed.
 
 ### Setup Steps
 
@@ -238,41 +229,37 @@ The raw CSV file encapsulated entire rows in outer quotation marks (`"Text, Sent
    pip install -r requirements.txt
    ```
 
-5. **Download the spaCy Language Model:**
+5. **Download the spaCy Language Model & NLTK Corpora:**
    ```bash
    python -m spacy download en_core_web_sm
+   python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')"
    ```
 
----
+### Running the Application
 
-## 12. How to Run the Project
-
-### A. Run Model Training & Evaluation Standalone
-To execute the automated evaluation pipeline and generate `evaluation_report.txt` and `confusion_matrix.png`:
-```bash
-python evaluate.py
-```
-
-### B. Launch the Streamlit Web Application
-To run the full interactive application:
-```bash
-streamlit run app.py
-```
-The browser will automatically open at `http://localhost:8501`.
+- **Run Standalone Model Evaluation:**
+  ```bash
+  python evaluate.py
+  ```
+- **Launch the Streamlit Web Application:**
+  ```bash
+  streamlit run app.py
+  ```
+  *Opens automatically at `http://localhost:8501`.*
 
 ---
 
-## 13. Project Structure
+## 11. Project Directory Structure
 
 ```
 Smart_Customer_Feedback_Analyzer/
 │
-├── app.py                      # Main Streamlit web application & dashboard
-├── analyzer.py                 # Core engine: data loading, cleaning, pipeline training, inference
-├── lab_features.py             # Lab Exp 05 (NER) & Lab Exp 06 (Morphology & Word Generation)
-├── evaluate.py                 # Standalone model evaluation & report generator
+├── app.py                      # Main Streamlit web application
+├── analyzer.py                 # Core engine (loading, preprocessing, n-grams, ML pipeline)
+├── lab_features.py             # Linguistic features (POS, chunking, NER, morphology, word generation)
+├── evaluate.py                 # Model evaluation and report generator
 ├── requirements.txt            # Python dependencies
-├── README.md                   # Comprehensive project documentation & viva guide
+├── README.md                   # Full documentation and curriculum mapping
 │
 ├── data/
 │   └── sentiment-analysis.csv  # Verified primary dataset (preserved exactly)
@@ -290,7 +277,7 @@ Smart_Customer_Feedback_Analyzer/
 
 ---
 
-## 14. Performance & Evaluation Results
+## 12. Performance & Evaluation Results
 
 Tested on an 80/20 stratified split of `sentiment-analysis.csv` (76 training rows, 20 test rows):
 
@@ -310,50 +297,24 @@ Actual Positive        0                   11
 - **Strongest Positive N-Grams:** `love`, `love product`, `song`, `friendly`, `store`, `amazing`, `outstanding`
 - **Strongest Negative N-Grams:** `terrible`, `disappointed`, `service terrible`, `service`, `food restaurant`, `damaged`
 
-*(Note: High test accuracy reflects distinct emotional vocabulary in this curated academic dataset. Real-world noisy social media text will exhibit lower accuracy, as discussed in the limitations).*
-
 ---
 
-## 15. Screenshots & UI Progression
+## 13. Academic Viva Reference Questions & Answers
 
-The Streamlit UI is organized into seven intuitive modules:
-1. **Dashboard Overview:** Displays KPI metric cards (Total Records: 96, Positive: 53, Negative: 43), sentiment pie charts, platform bar charts, and a real-time record explorer.
-2. **Single Feedback Analysis:** Provides text input with sample buttons, live sentiment badge, confidence bar, complaint domain classification, and entity extraction table.
-3. **Batch CSV Analysis:** Allows file upload, column mapping, progress-tracked batch prediction, and CSV download of enriched results.
-4. **Lab 05 NER Tool:** Interactive entity parsing with spaCy and displaCy rendering, plus a regex fallback comparator.
-5. **Lab 06 Morphology Tool:** Morphological decomposition tab and word generation engine applying CVC doubling and consonant+y rules.
-6. **Model Evaluation:** Interactive confusion matrix heatmap and top positive/negative feature importance tables.
-7. **About & Viva Guide:** Architecture diagrams and answers to top viva examination questions.
+**Q1: What are the distinct stages in text preprocessing (Exp 01) and why are they ordered this way?**  
+*Answer:* Preprocessing follows: (1) Script Validation (verifies expected character encoding), (2) Filtration (cleans URLs and non-alphanumeric noise), (3) Tokenization (segments text into words/sentences), (4) Stop Word Removal (removes non-informative words while preserving negations), and (5) Stemming (reduces words to root forms). Ordering is critical: punctuation must be filtered before tokenization, and tokens must exist before stop words or stemming can be applied.
 
----
+**Q2: What is the difference between Free and Bound Morphemes (Exp 02)?**  
+*Answer:* A Free Morpheme can stand alone as an independent meaningful word (e.g., 'cat', 'play', 'service'). A Bound Morpheme cannot stand alone and must attach to a free morpheme (e.g., prefix 'un-', suffix '-ed', '-ness').
 
-## 16. Academic Limitations & Future Scope
+**Q3: How do N-Gram Language Models work and what is Laplace Smoothing (Exp 03)?**  
+*Answer:* An N-Gram model predicts the likelihood of word sequences based on conditional probability $P(w_n \mid w_{n-1})$. Maximum Likelihood Estimation counts occurrences in the corpus. When an unseen n-gram occurs, its probability is 0; Laplace add-1 smoothing adds 1 to all numerator counts and vocabulary size $V$ to the denominator to prevent zero-probability errors.
 
-### Limitations
-1. **Curated Academic Dataset:** The primary dataset contains 96 rows with clear emotional lexicons. It does not encompass rare dialectal slang, sarcastic irony, or mixed sentiments within a single review.
-2. **Binary Sentiment Scope:** The dataset strictly defines `Positive` and `Negative` sentiments; no `Neutral` class is fabricated.
-3. **Keyword-Based Complaint Categories:** Category detection uses explainable keyword sets because the dataset does not have labeled multi-class complaint annotations.
-4. **Morphology Rules:** Word generation focuses on regular English orthographic patterns and does not cover every irregular verb (e.g., `run` -> `ran`, `buy` -> `bought`).
+**Q4: How does Syntactic Chunking differ from POS Tagging (Exp 04)?**  
+*Answer:* POS tagging assigns grammatical tags to single words (e.g. 'the'/DT, 'customer'/NN, 'service'/NN). Syntactic Chunking (shallow parsing) groups contiguous words into meaningful phrases based on grammar rules (e.g. Noun Phrase `[NP: the customer service]`), identifying the target subject of customer sentiment.
 
-### Future Scope
-1. **Aspect-Based Sentiment Analysis (ABSA):** Decompose complex reviews to extract individual sentiments per aspect (e.g., "Food was great (+), but service was slow (-)").
-2. **Transformer Integration:** Fine-tune small domain-adapted transformer models (DistilBERT or RoBERTa) on expanded e-commerce datasets.
-3. **Active Learning Feedback Loop:** Enable administrators to correct model errors directly in the UI, incrementally retraining the classifier.
-4. **Multilingual Support:** Extend morphological analysis and sentiment classification to regional and non-English languages.
+**Q5: What is the difference between Rule-Based and Statistical Named Entity Recognition (Exp 05)?**  
+*Answer:* Rule-based NER matches predefined regular expression patterns (e.g., currency symbols for MONEY, `@` handles for USERS), but fails on ambiguous contexts. Statistical NER (like spaCy's transition-based model) uses machine learning context vectors to recognize entities based on how words are used in surrounding text.
 
----
-
-## 17. Academic Viva Reference Questions & Answers
-
-**Q1: What is the primary difference between Stemming and Lemmatization?**  
-*Answer:* Stemming applies heuristic rule-based chopping of word ends (often producing non-words like `studi` from `studying`), whereas Lemmatization uses a vocabulary and morphological analysis to return the legitimate dictionary base form (lemma, e.g. `study`).
-
-**Q2: Why use TF-IDF rather than simple Bag-of-Words (CountVectorizer)?**  
-*Answer:* CountVectorizer only counts raw frequency, heavily weighting universally frequent non-discriminative words. TF-IDF downweights words that appear across all documents (high Document Frequency) and highlights distinctive words that appear frequently within a specific class.
-
-**Q3: How does Logistic Regression perform binary classification?**  
-*Answer:* It calculates a weighted linear combination of input features $z = \mathbf{w}^T \mathbf{x} + b$ and passes it through the sigmoid activation function $\sigma(z) = \frac{1}{1 + e^{-z}}$, mapping real-valued inputs into a probability interval $[0, 1]$.
-
-**Q4: What is the purpose of stratification in `train_test_split`?**  
-*Answer:* Stratification ensures that the proportion of classes in both training and testing subsets exactly matches the proportion in the original dataset, avoiding class-distribution skew in small datasets.
-
+**Q6: What orthographic rules govern regular English Word Generation (Exp 06)?**  
+*Answer:* Standard rules include: (1) CVC Consonant Doubling for short-vowel monosyllabic bases before vowel suffixes (`stop` $\rightarrow$ `stopped`, `stopping`), (2) Consonant + 'y' changing to 'i' before '-es' and '-ed' (`study` $\rightarrow$ `studies`), (3) Dropping silent 'e' before vowel suffixes (`create` $\rightarrow$ `creating`), and (4) Sibilant pluralization appending '-es' to `s, ss, sh, ch, x, z`.

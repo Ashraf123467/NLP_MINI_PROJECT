@@ -1,20 +1,19 @@
 """
 Smart Customer Feedback & Sentiment Analyzer - Streamlit Application (app.py)
 
-Interactive web application for:
-1. Dashboard Overview of real dataset (sentiment-analysis.csv).
-2. Single Feedback Analysis (Sentiment, Probabilities, NER, Categorization, Cleaned Text).
+Interactive customer feedback intelligence platform integrating:
+1. Dashboard Overview of real customer feedback (sentiment-analysis.csv).
+2. Single Feedback Analysis (Sentiment, Probabilities, Pipeline Stages, POS & Chunking, N-Grams, NER).
 3. Batch Feedback Analysis (CSV upload, prediction, summary, download).
-4. NLP Lab Experiment 05: Named Entity Recognition (spaCy & Regex Fallback).
-5. NLP Lab Experiment 06: Morphological Analysis & Word Generation.
-6. Model Evaluation & Performance (Confusion Matrix, Metrics, Feature Importance).
-7. About Project & B.Tech Academic Viva Guide.
+4. Entity & Phrase Extractor (Named Entity Recognition & Syntactic Noun/Verb Chunks).
+5. Lexical & Word Analyzer (Morphological Decomposition & Word Generation Engine).
+6. Model Evaluation & N-Gram Insights (Confusion Matrix, Metrics, Feature Importance).
+7. About Project & Architecture (Technical Architecture, Methodology & Viva FAQ).
 """
 
 import os
 import sys
 import io
-import time
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,6 +28,9 @@ if BASE_DIR not in sys.path:
 from analyzer import (
     load_dataset,
     preprocess_text,
+    get_preprocessing_pipeline_breakdown,
+    calculate_ngram_probabilities,
+    get_corpus_top_ngrams,
     train_model,
     load_model,
     predict_sentiment,
@@ -36,12 +38,15 @@ from analyzer import (
     get_top_features
 )
 from lab_features import (
+    extract_pos_tags,
+    extract_syntactic_chunks,
     analyze_entities,
     extract_entities_spacy,
     extract_entities_fallback,
     analyze_morphology,
     generate_word_forms,
-    SPACY_AVAILABLE
+    SPACY_AVAILABLE,
+    NLTK_AVAILABLE
 )
 
 # -----------------------------------------------------------------------------
@@ -54,7 +59,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for modern academic styling
+# Custom CSS for modern styling
 st.markdown("""
 <style>
     /* Metric Card Styling */
@@ -96,13 +101,15 @@ st.markdown("""
         font-size: 14px;
         display: inline-block;
     }
-    .badge-info {
+    .badge-tag {
         background-color: #e0f2fe;
         color: #0369a1;
-        padding: 4px 10px;
+        padding: 3px 8px;
         border-radius: 6px;
-        font-weight: 500;
+        font-weight: 600;
         font-size: 12px;
+        display: inline-block;
+        margin: 2px;
     }
     .viva-card {
         background-color: #f1f5f9;
@@ -135,13 +142,12 @@ def get_or_train_pipeline():
             return load_model(MODEL_PATH)
         except Exception:
             pass
-    # If model doesn't exist, train it using the required dataset
     df = load_dataset(DATA_PATH)
     results = train_model(df, test_size=0.2, random_state=42, save_path=MODEL_PATH)
     return results["pipeline"]
 
 # -----------------------------------------------------------------------------
-# Sidebar Navigation & Information
+# Sidebar Navigation (Professional Product Names Only)
 # -----------------------------------------------------------------------------
 with st.sidebar:
     if os.path.exists(LOGO_PATH):
@@ -149,35 +155,35 @@ with st.sidebar:
     else:
         st.title("💬 Smart Analyzer")
 
-    st.markdown("### **Navigation**")
+    st.markdown("### **Platform Navigation**")
     nav_option = st.radio(
-        "Select Module:",
+        "Select Function:",
         [
             "📊 Dashboard Overview",
             "🔍 Single Feedback Analysis",
             "📁 Batch Feedback Analysis",
-            "🏷️ Lab 05: Named Entity Recognition",
-            "🧬 Lab 06: Morphology & Word Gen",
-            "📈 Model Evaluation",
-            "ℹ️ About Project & Viva Guide"
+            "🏷️ Entity & Phrase Extractor",
+            "🧬 Lexical & Word Analyzer",
+            "📈 Model Evaluation & N-Gram Insights",
+            "ℹ️ About Project & Architecture"
         ],
         index=0
     )
 
     st.markdown("---")
-    st.markdown("#### **System Environment**")
-    st.markdown(f"• **Primary Dataset:** `sentiment-analysis.csv`")
-    st.markdown(f"• **ML Model:** TF-IDF + Logistic Regression")
-    st.markdown(f"• **spaCy Status:** {'✅ Ready (`en_core_web_sm`)' if SPACY_AVAILABLE else '⚠️ Fallback active'}")
-    st.markdown(f"• **Student Spec:** B.Tech CSE (Artificial Intelligence)")
-    st.caption("College Mini Project Demonstration")
+    st.markdown("#### **System Diagnostics**")
+    st.markdown(f"• **Dataset:** `sentiment-analysis.csv`")
+    st.markdown(f"• **Classifier:** TF-IDF + Logistic Regression")
+    st.markdown(f"• **Statistical NER:** {'✅ Loaded (`en_core_web_sm`)' if SPACY_AVAILABLE else '⚠️ Regex Fallback'}")
+    st.markdown(f"• **Linguistic Parser:** {'✅ NLTK & spaCy Ready' if NLTK_AVAILABLE else '⚠️ Standard Regex'}")
+    st.caption("Smart Customer Feedback & Sentiment Analyzer")
 
 
 # -----------------------------------------------------------------------------
 # MODULE 1: DASHBOARD OVERVIEW
 # -----------------------------------------------------------------------------
 if nav_option == "📊 Dashboard Overview":
-    st.title("📊 Customer Feedback & Sentiment Dashboard")
+    st.title("📊 Customer Feedback Analytics Dashboard")
     st.markdown(
         "Real-time analytical insights derived strictly from the verified primary dataset: "
         "`sentiment-analysis.csv`. No synthetic or demo records used."
@@ -206,7 +212,7 @@ if nav_option == "📊 Dashboard Overview":
     with c1:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Total Verified Records</div>
+            <div class="metric-label">Total Verified Reviews</div>
             <div class="metric-value">{total_records}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -228,7 +234,7 @@ if nav_option == "📊 Dashboard Overview":
         avg_conf = df["Confidence_Score"].mean() if "Confidence_Score" in df.columns else 0.0
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Avg Dataset Confidence</div>
+            <div class="metric-label">Avg Review Confidence</div>
             <div class="metric-value" style="color: #4f46e5;">{avg_conf:.2f}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -276,6 +282,24 @@ if nav_option == "📊 Dashboard Overview":
         loc_counts = df["Location"].value_counts().head(10)
         st.bar_chart(loc_counts)
 
+    # Frequent Bigram Expressions Across Feedback
+    st.markdown("---")
+    st.subheader("Most Frequent Customer Review Bigrams")
+    st.markdown("Identifies dominant two-word co-occurrences in positive and negative consumer sentiments:")
+
+    top_bg = get_corpus_top_ngrams(df, n=2, top_k=6)
+    bg_col1, bg_col2 = st.columns(2)
+    with bg_col1:
+        st.markdown("##### 🟢 **Top Positive Phrases (Bigrams)**")
+        if "Positive" in top_bg:
+            pos_bg_df = pd.DataFrame(top_bg["Positive"], columns=["Bigram Sequence", "Corpus Frequency"])
+            st.dataframe(pos_bg_df, use_container_width=True)
+    with bg_col2:
+        st.markdown("##### 🔴 **Top Negative Phrases (Bigrams)**")
+        if "Negative" in top_bg:
+            neg_bg_df = pd.DataFrame(top_bg["Negative"], columns=["Bigram Sequence", "Corpus Frequency"])
+            st.dataframe(neg_bg_df, use_container_width=True)
+
     # Raw Dataset Explorer
     st.markdown("---")
     st.subheader("Dataset Records Explorer")
@@ -301,24 +325,25 @@ if nav_option == "📊 Dashboard Overview":
 # MODULE 2: SINGLE FEEDBACK ANALYSIS
 # -----------------------------------------------------------------------------
 elif nav_option == "🔍 Single Feedback Analysis":
-    st.title("🔍 Single Feedback & Review Analysis")
+    st.title("🔍 Single Feedback Linguistic & Sentiment Analysis")
     st.markdown(
         "Analyze customer feedback to classify sentiment, calculate prediction confidence, "
-        "identify complaint categories, and extract named entities."
+        "identify complaint domains, inspect preprocessing stages, and extract syntactic phrases and entities."
     )
 
     try:
         pipeline = get_or_train_pipeline()
+        df_corpus = get_dataset(DATA_PATH)
     except Exception as e:
-        st.error(f"Error loading trained sentiment pipeline: {e}")
+        st.error(f"Error loading system assets: {e}")
         st.stop()
 
-    # Pre-filled samples for quick college viva demonstration
-    st.markdown("##### **Quick Sample Presets (from dataset):**")
+    # Pre-filled samples for demonstration
+    st.markdown("##### **Quick Preset Samples (from dataset):**")
     s_col1, s_col2, s_col3, s_col4 = st.columns(4)
     sample_text = ""
     if s_col1.button("Sample: Positive Product"):
-        sample_text = "I love this product! The quality is outstanding and arrived quickly."
+        sample_text = "I love this product! The quality is outstanding and arrived quickly in New York."
     if s_col2.button("Sample: Support Complaint"):
         sample_text = "I'm extremely disappointed with their customer support. No resolution provided."
     if s_col3.button("Sample: Website Review"):
@@ -330,24 +355,29 @@ elif nav_option == "🔍 Single Feedback Analysis":
         "Enter Customer Feedback / Review Text:",
         value=sample_text,
         height=100,
-        placeholder="Type or paste any customer feedback here..."
+        placeholder="Type or paste any customer review or feedback here..."
     )
 
     if st.button("🚀 Analyze Feedback", type="primary"):
         if not user_input.strip():
             st.warning("Please enter feedback text to analyze.")
         else:
-            with st.spinner("Analyzing text..."):
+            with st.spinner("Executing linguistic and sentiment analysis..."):
                 pred_result = predict_sentiment(user_input, pipeline)
                 category_result = detect_feedback_category(user_input)
+                prep_stages = get_preprocessing_pipeline_breakdown(user_input)
+                pos_tags = extract_pos_tags(user_input)
+                chunks_info = extract_syntactic_chunks(user_input)
+                ngram_prob_info = calculate_ngram_probabilities(df_corpus["Text"].tolist(), user_input, n=2)
                 ner_result = analyze_entities(user_input)
 
             st.markdown("---")
             st.subheader("Analysis Results")
 
-            r_col1, r_col2 = st.columns([1, 1])
+            # Sentiment & Domain Row
+            res_col1, res_col2 = st.columns([1, 1])
 
-            with r_col1:
+            with res_col1:
                 st.markdown("#### **Sentiment Classification**")
                 pred = pred_result["prediction"]
                 conf = pred_result["confidence"]
@@ -364,29 +394,124 @@ elif nav_option == "🔍 Single Feedback Analysis":
                 for cls, prob in pred_result["probabilities"].items():
                     st.write(f"- **{cls}:** `{prob:.2%}`")
 
-                st.markdown("#### **Rule-Based Feedback Domain**")
-                st.info(f"🏷️ **Category:** **{category_result['category']}**")
+            with res_col2:
+                st.markdown("#### **Feedback Domain & Scope**")
+                st.info(f"🏷️ **Detected Domain:** **{category_result['category']}**")
                 if category_result["matched_keywords"]:
                     st.caption(f"Matched keyword(s): `{', '.join(category_result['matched_keywords'])}`")
                 st.caption(f"ℹ️ {category_result['note']}")
 
-            with r_col2:
-                st.markdown("#### **Text Preprocessing Breakdown**")
-                st.write("**Original Text:**")
-                st.code(user_input, language="text")
+            st.markdown("---")
 
-                st.write("**Cleaned Feature Text (Negations Preserved):**")
-                st.code(pred_result["cleaned_text"], language="text")
-                st.caption("Lowercased, URLs & punctuation removed, contractions expanded, negations retained.")
+            # Detailed Linguistic Analysis Tabs
+            tab_prep, tab_pos_chunks, tab_ngram, tab_ner = st.tabs([
+                "🧹 Text Preprocessing Stages",
+                "🏷️ POS Tagging & Phrase Chunks",
+                "📊 N-Gram Model & Sentence Likelihood",
+                "🎯 Named Entity Extraction"
+            ])
 
-                st.markdown("#### **Extracted Entities (NER)**")
+            # TAB 1: PREPROCESSING STAGES
+            with tab_prep:
+                st.subheader("Linguistic Preprocessing Pipeline Breakdown")
+                st.markdown(
+                    "Demonstrates the step-by-step transformation from raw customer text into clean feature tokens:"
+                )
+
+                st.markdown("##### **1. Script Validation & Character Check**")
+                s_valid = prep_stages["script_validation"]
+                st.write(f"- **Script Classification:** `{s_valid['script']}`")
+                st.write(f"- **Encoding Status:** `{s_valid['message']}`")
+
+                st.markdown("##### **2. Noise & Punctuation Filtration**")
+                st.write("Cleaned text after removing URLs and extraneous punctuation:")
+                st.code(prep_stages["filtered_text"], language="text")
+
+                st.markdown("##### **3. Tokenization**")
+                p_c1, p_c2 = st.columns(2)
+                with p_c1:
+                    st.write(f"**Sentence Tokens ({len(prep_stages['sentences'])}):**")
+                    st.write(prep_stages["sentences"])
+                with p_c2:
+                    st.write(f"**Word Tokens ({len(prep_stages['word_tokens'])}):**")
+                    st.write(prep_stages["word_tokens"][:15])
+
+                st.markdown("##### **4. Stop Word Removal (Negation Preservation)**")
+                st.write("**Tokens with Negation Preserved (Used in Sentiment Analysis):**")
+                st.write(prep_stages["stopwords_removed_preserved"])
+                st.caption("Notice: Critical sentiment negations (e.g. 'not', 'no', 'never') are explicitly retained.")
+
+                st.markdown("##### **5. Stemming (Porter Stemmer)**")
+                st.write("**Stemmed Root Tokens:**")
+                st.write(prep_stages["stemmed_tokens"])
+                st.caption("Demonstrates word ending truncation to normalize morphological variants.")
+
+            # TAB 2: POS TAGGING & SYNTACTIC CHUNKS
+            with tab_pos_chunks:
+                st.subheader("Part-of-Speech (POS) Tagging & Syntactic Chunks")
+                st.markdown(
+                    "Analyzes grammatical categories to separate target entities (Noun Phrases) from evaluative actions (Verb Phrases)."
+                )
+
+                col_pos, col_chk = st.columns([1, 1])
+
+                with col_pos:
+                    st.markdown("##### **POS Tagging Table**")
+                    if pos_tags:
+                        pos_df = pd.DataFrame(pos_tags)[["token", "pos_tag", "category", "description"]]
+                        pos_df.columns = ["Token", "Penn Tag", "Category", "Linguistic Role"]
+                        st.dataframe(pos_df, use_container_width=True, height=280)
+                    else:
+                        st.write("No tokens tagged.")
+
+                with col_chk:
+                    st.markdown("##### **Syntactic Chunks (Shallow Parsing)**")
+                    st.caption(f"Parser Engine: {chunks_info.get('engine', 'NLTK')}")
+                    if chunks_info["chunks"]:
+                        chk_df = pd.DataFrame(chunks_info["chunks"])[["phrase", "type", "description"]]
+                        chk_df.columns = ["Extracted Phrase", "Chunk Type", "Semantic Function"]
+                        st.dataframe(chk_df, use_container_width=True, height=280)
+                    else:
+                        st.info("No multi-word phrase chunks detected in this input.")
+
+            # TAB 3: N-GRAMS & LANGUAGE MODELING
+            with tab_ngram:
+                st.subheader("N-Gram Representation & Sequence Probability")
+                st.markdown(
+                    "Extracts unigram and bigram sequences and calculates statistical language model likelihood based on the corpus."
+                )
+
+                ng_c1, ng_c2 = st.columns(2)
+                with ng_c1:
+                    st.markdown("##### **Extracted Bigrams (2-Word Sequences)**")
+                    st.write(ngram_prob_info["target_bigrams"] if ngram_prob_info["target_bigrams"] else "Insufficient tokens for bigrams.")
+
+                    st.markdown("##### **Statistical Sequence Metrics**")
+                    st.write(f"- **Vocabulary Size ($V$):** `{ngram_prob_info['vocab_size']}` unique words")
+                    st.write(f"- **Log Sentence Likelihood:** `{ngram_prob_info['sentence_log_prob']}`")
+                    st.write(f"- **Perplexity Score:** `{ngram_prob_info['perplexity']}` (Lower indicates more common phrasing)")
+
+                with ng_c2:
+                    st.markdown("##### **Laplace-Smoothed Bigram Probabilities**")
+                    if ngram_prob_info["bigram_details"]:
+                        st.dataframe(pd.DataFrame(ngram_prob_info["bigram_details"]), use_container_width=True)
+                    else:
+                        st.write("No bigram details available.")
+
+            # TAB 4: NAMED ENTITY RECOGNITION
+            with tab_ner:
+                st.subheader("Named Entity Recognition (NER)")
                 st.caption(f"Engine: {ner_result['engine']}")
                 if ner_result["entities"]:
                     ent_df = pd.DataFrame(ner_result["entities"])[["text", "label", "description"]]
-                    ent_df.columns = ["Entity", "Type", "Linguistic Description"]
+                    ent_df.columns = ["Entity Token", "Entity Type", "Linguistic Description"]
                     st.dataframe(ent_df, use_container_width=True)
+
+                    if ner_result.get("html"):
+                        st.markdown("##### **Visual Entity Annotations**")
+                        st.components.v1.html(ner_result["html"], height=130, scrolling=True)
                 else:
-                    st.write("No named entities detected in this specific text.")
+                    st.info("No specific named entities (persons, locations, dates, currency) detected in this text.")
 
 
 # -----------------------------------------------------------------------------
@@ -416,7 +541,6 @@ elif nav_option == "📁 Batch Feedback Analysis":
                 st.error("No text columns found in the uploaded CSV.")
                 st.stop()
 
-            # Default to a column with 'text' or 'feedback' or 'review' in name
             default_col = text_cols[0]
             for c in text_cols:
                 if any(k in c.lower() for k in ["text", "feedback", "review", "comment"]):
@@ -437,7 +561,6 @@ elif nav_option == "📁 Batch Feedback Analysis":
                 preds = []
                 confs = []
                 categories = []
-                cleaned_texts = []
 
                 total = len(batch_df)
                 for idx, row in batch_df.iterrows():
@@ -448,7 +571,6 @@ elif nav_option == "📁 Batch Feedback Analysis":
                     preds.append(res["prediction"])
                     confs.append(round(res["confidence"], 4))
                     categories.append(cat_res["category"])
-                    cleaned_texts.append(res["cleaned_text"])
 
                     if idx % 10 == 0 or idx == total - 1:
                         progress_bar.progress((idx + 1) / total)
@@ -460,7 +582,6 @@ elif nav_option == "📁 Batch Feedback Analysis":
                 batch_df["Confidence_Score"] = confs
                 batch_df["Detected_Category"] = categories
 
-                # Summary Statistics
                 st.markdown("---")
                 st.subheader("Batch Analysis Summary")
                 b_pos = (batch_df["Predicted_Sentiment"] == "Positive").sum()
@@ -472,7 +593,6 @@ elif nav_option == "📁 Batch Feedback Analysis":
                 bc2.metric("Positive Sentiment", f"{b_pos} ({(b_pos/b_total)*100:.1f}%)")
                 bc3.metric("Negative Sentiment", f"{b_neg} ({(b_neg/b_total)*100:.1f}%)")
 
-                # Visualization of Batch Results
                 fig_b, ax_b = plt.subplots(figsize=(6, 2.8))
                 sns.countplot(x="Predicted_Sentiment", data=batch_df, palette=["#22c55e", "#ef4444"], ax=ax_b)
                 ax_b.set_title("Predicted Sentiment Breakdown", fontsize=11)
@@ -482,7 +602,6 @@ elif nav_option == "📁 Batch Feedback Analysis":
                 st.subheader("Enriched Results Table")
                 st.dataframe(batch_df, use_container_width=True)
 
-                # Export CSV
                 csv_buffer = io.StringIO()
                 batch_df.to_csv(csv_buffer, index=False)
                 st.download_button(
@@ -497,116 +616,98 @@ elif nav_option == "📁 Batch Feedback Analysis":
 
 
 # -----------------------------------------------------------------------------
-# MODULE 4: NLP LAB 05 — NAMED ENTITY RECOGNITION (NER)
+# MODULE 4: ENTITY & PHRASE EXTRACTOR
 # -----------------------------------------------------------------------------
-elif nav_option == "🏷️ Lab 05: Named Entity Recognition":
-    st.title("🏷️ NLP Lab Experiment 05 — Named Entity Recognition (NER)")
+elif nav_option == "🏷️ Entity & Phrase Extractor":
+    st.title("🏷️ Entity & Syntactic Phrase Extractor")
     st.markdown(
-        "Demonstrates the extraction of real-world entities (Persons, Organizations, Locations, "
-        "Dates, Monetary values) from unstructured customer feedback."
+        "Demonstrates advanced information extraction from customer text: "
+        "locating structured named entities and parsing grammatical phrase chunks."
     )
 
-    with st.expander("📖 Academic Background — Lab Exp 05", expanded=False):
-        st.markdown("""
-        **Objective:** To identify and classify named entities present in customer reviews into predefined categories.
-        - **Model:** spaCy `en_core_web_sm` (Small English pipeline trained on OntoNotes 5).
-        - **Statistical NER Architecture:** Transition-based parser using convolutional neural networks / embeddings.
-        - **Entity Types Recognized:**
-          - `PERSON`: Real or fictional people
-          - `ORG`: Companies, agencies, institutions
-          - `GPE`: Geopolitical entities (countries, cities, states)
-          - `DATE`: Absolute or relative dates
-          - `MONEY`: Monetary values including currency units
-          - `PRODUCT`: Objects, vehicles, foods, etc.
-        - **Fallback Heuristic:** Regular expression matching for dates, currency, emails, and order IDs.
-        """)
-
-    st.markdown("##### **Test Input:**")
+    st.markdown("##### **Select Example or Input Custom Text:**")
     ner_presets = [
         "Steve Jobs founded Apple in California, and in 2023 it was worth $3 trillion.",
         "I bought a $75 headphones set from Amazon in New York on 2023-07-02. Contact: support@amazon.com",
-        "The flight from London to Paris was delayed by 3 hours. Order ID: ORD-9821."
+        "The customer service flight from London to Paris was delayed by 3 hours. Order ID: ORD-9821."
     ]
     preset_choice = st.selectbox("Select a Preset Example or Type Custom Text:", ["Custom Input"] + ner_presets)
 
-    if preset_choice != "Custom Input":
-        default_ner_text = preset_choice
-    else:
-        default_ner_text = "I ordered headphones from Amazon in Berlin for $49 on 2023-06-15. User @audiophile789 was very helpful."
-
-    ner_input = st.text_area("Input Feedback Text:", value=default_ner_text, height=100)
+    default_text = preset_choice if preset_choice != "Custom Input" else "I ordered headphones from Amazon in Berlin for $49 on 2023-06-15. User @audiophile789 was very helpful."
+    text_input = st.text_area("Customer Text Input:", value=default_text, height=100)
 
     use_fallback_toggle = st.checkbox(
-        "Compare with Regex Fallback Extractor (Laboratory Comparison)",
+        "Use Rule-Based Regex Fallback Extractor",
         value=False,
         help="Demonstrates the difference between statistical NLP (spaCy) and rule-based regex heuristics."
     )
 
-    if st.button("🔍 Extract Entities", type="primary"):
-        if not ner_input.strip():
-            st.warning("Please enter text for entity recognition.")
+    if st.button("🔍 Extract Entities & Phrases", type="primary"):
+        if not text_input.strip():
+            st.warning("Please enter text to extract.")
         else:
             if use_fallback_toggle:
-                result = extract_entities_fallback(ner_input)
+                ner_res = extract_entities_fallback(text_input)
             else:
-                result = extract_entities_spacy(ner_input)
+                ner_res = extract_entities_spacy(text_input)
+
+            chunks_res = extract_syntactic_chunks(text_input)
 
             st.markdown("---")
-            st.subheader("Entity Extraction Results")
-            st.info(f"**Extraction Engine:** {result['engine']} — {result['message']}")
+            c_left, c_right = st.columns([1, 1])
 
-            if result["entities"]:
-                st.markdown("#### **Extracted Entities Table**")
-                table_data = []
-                for e in result["entities"]:
-                    table_data.append({
-                        "Entity Token": e["text"],
-                        "Label / Category": e["label"],
-                        "Character Span": f"[{e['start']}, {e['end']}]",
-                        "Linguistic Explanation": e["description"]
-                    })
-                st.dataframe(pd.DataFrame(table_data), use_container_width=True)
+            with c_left:
+                st.subheader("1. Named Entities (NER)")
+                st.info(f"**Engine:** {ner_res['engine']}")
+                if ner_res["entities"]:
+                    table_data = []
+                    for e in ner_res["entities"]:
+                        table_data.append({
+                            "Entity": e["text"],
+                            "Type": e["label"],
+                            "Span": f"[{e['start']}, {e['end']}]",
+                            "Description": e["description"]
+                        })
+                    st.dataframe(pd.DataFrame(table_data), use_container_width=True)
 
-                if result.get("html"):
-                    st.markdown("#### **Visual Entity Annotations (spaCy displaCy)**")
-                    st.components.v1.html(result["html"], height=130, scrolling=True)
-            else:
-                st.warning("No named entities were detected in the given text.")
+                    if ner_res.get("html"):
+                        st.markdown("##### **Visual Entity Annotations**")
+                        st.components.v1.html(ner_res["html"], height=130, scrolling=True)
+                else:
+                    st.warning("No named entities detected.")
+
+            with c_right:
+                st.subheader("2. Syntactic Chunks (Shallow Parsing)")
+                st.info(f"**Parser:** {chunks_res.get('engine', 'Syntactic Parser')}")
+                if chunks_res["chunks"]:
+                    st.dataframe(pd.DataFrame(chunks_res["chunks"])[["phrase", "type", "description"]], use_container_width=True)
+                else:
+                    st.warning("No syntactic chunks detected.")
 
 
 # -----------------------------------------------------------------------------
-# MODULE 5: NLP LAB 06 — MORPHOLOGICAL ANALYSIS & WORD GENERATION
+# MODULE 5: LEXICAL & WORD ANALYZER
 # -----------------------------------------------------------------------------
-elif nav_option == "🧬 Lab 06: Morphology & Word Gen":
-    st.title("🧬 NLP Lab Experiment 06 — Morphological Analysis & Word Generation")
+elif nav_option == "🧬 Lexical & Word Analyzer":
+    st.title("🧬 Lexical & Morphological Word Analyzer")
     st.markdown(
-        "Explore morphological decomposition, affix identification (inflectional vs derivational), "
-        "and rule-governed word form generation."
+        "Explore internal word structure (morphemic dissection) and linguistic word generation "
+        "governed by standard English orthographic rules."
     )
 
     tab_analysis, tab_generation = st.tabs([
-        "🔬 Part A: Morphological Analysis",
-        "⚙️ Part B: Word Generation Engine"
+        "🔬 Morphological Analysis (Free vs. Bound Morphemes)",
+        "⚙️ Linguistic Word Generation Engine"
     ])
 
-    # PART A: MORPHOLOGICAL ANALYSIS
     with tab_analysis:
-        st.subheader("Morphological Analysis")
+        st.subheader("Morphological Decomposition")
         st.markdown(
-            "Enter a word to decompose it into its **prefix**, **root/stem candidate**, and **suffix**, "
-            "and identify whether the morphological process is **Inflectional** or **Derivational**."
+            "Decomposes words into **Free Morphemes** (roots that stand alone) and **Bound Morphemes** (prefixes & suffixes)."
         )
 
-        with st.expander("📖 Academic Notes: Inflectional vs. Derivational Morphology"):
-            st.markdown("""
-            - **Inflectional Morphology:** Adds grammatical information (tense, number, comparison) *without* changing the grammatical category or core lexical meaning of the base word.
-              - Examples: `play` -> `playing` (progressive), `plays` (3rd person), `played` (past).
-            - **Derivational Morphology:** Creates a new word or changes the part of speech / core concept.
-              - Examples: `happy` (adj) -> `happiness` (noun), `connect` (verb) -> `disconnect` (opposite verb).
-            """)
-
         sample_words = ["unhappiness", "disconnect", "playing", "studying", "acceptable", "rebuild", "subpar", "taste"]
-        selected_sample = st.selectbox("Try a sample word:", ["-- Choose a word --"] + sample_words)
+        selected_sample = st.selectbox("Select a sample word:", ["-- Choose a word --"] + sample_words)
         user_word = st.text_input("Or enter any English word:", value="" if selected_sample.startswith("--") else selected_sample)
 
         if st.button("Decompose Word", type="primary"):
@@ -615,22 +716,22 @@ elif nav_option == "🧬 Lab 06: Morphology & Word Gen":
             else:
                 analysis = analyze_morphology(user_word)
                 st.markdown("---")
-                st.subheader(f"Analysis for: `{analysis['original_word']}`")
+                st.subheader(f"Decomposition of: `{analysis['original_word']}`")
 
                 m1, m2, m3 = st.columns(3)
-                m1.metric("Prefix", analysis["prefix"] if analysis["prefix"] else "None")
-                m2.metric("Base / Root Candidate", analysis["root_candidate"])
-                m3.metric("Suffix", analysis["suffix"] if analysis["suffix"] else "None")
+                m1.metric("Prefix (Bound)", analysis["prefix"] if analysis["prefix"] else "None")
+                m2.metric("Root (Free Morpheme)", analysis["root_candidate"])
+                m3.metric("Suffix (Bound)", analysis["suffix"] if analysis["suffix"] else "None")
 
-                st.markdown(f"**Morphology Classification:** `{analysis['morphology_type']}`")
+                st.markdown(f"**Morphological Category:** `{analysis['morphology_type']}`")
+                st.markdown(f"**Bound Morphemes Identified:** `{', '.join(analysis['bound_morphemes'])}`")
                 st.info(f"**Linguistic Explanation:** {analysis['explanation']}")
 
-    # PART B: WORD GENERATION
     with tab_generation:
-        st.subheader("Linguistic Word Generation Engine")
+        st.subheader("Word Generation Engine")
         st.markdown(
-            "Enter a base root word (e.g. `play`, `study`, `stop`, `connect`, `happy`) to systematically "
-            "generate inflected and derived word forms applying English spelling rules."
+            "Enter a base root word to systematically generate inflected and derived word forms "
+            "applying English orthographic rules."
         )
 
         gen_samples = ["play", "study", "stop", "create", "watch", "happy", "connect", "taste"]
@@ -643,26 +744,26 @@ elif nav_option == "🧬 Lab 06: Morphology & Word Gen":
             else:
                 gen_result = generate_word_forms(gen_input)
                 st.markdown("---")
-                st.subheader(f"Generated Forms for Base Word: `{gen_result['base_word']}`")
+                st.subheader(f"Generated Word Forms for: `{gen_result['base_word']}`")
 
                 forms_list = []
                 for form_name, word_form in gen_result["forms"].items():
                     forms_list.append({
-                        "Grammatical / Morphological Form": form_name,
-                        "Generated Word": word_form
+                        "Grammatical / Morphological Category": form_name,
+                        "Generated Form": word_form
                     })
                 st.table(pd.DataFrame(forms_list))
 
-                st.markdown("#### **Orthographic & Phonetic Spelling Rules Applied:**")
+                st.markdown("#### **Orthographic Rules Applied:**")
                 for r in gen_result["rules_applied"]:
                     st.markdown(f"- ✅ {r}")
 
 
 # -----------------------------------------------------------------------------
-# MODULE 6: MODEL EVALUATION
+# MODULE 6: MODEL EVALUATION & N-GRAM INSIGHTS
 # -----------------------------------------------------------------------------
-elif nav_option == "📈 Model Evaluation":
-    st.title("📈 Machine Learning Model Evaluation")
+elif nav_option == "📈 Model Evaluation & N-Gram Insights":
+    st.title("📈 Machine Learning Performance & N-Gram Analysis")
     st.markdown(
         "Comprehensive performance metrics for the **TF-IDF + Logistic Regression** pipeline "
         "trained strictly on `sentiment-analysis.csv`."
@@ -675,7 +776,6 @@ elif nav_option == "📈 Model Evaluation":
         st.error(f"Error during model evaluation: {e}")
         st.stop()
 
-    # Top KPI Metrics
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Test Accuracy", f"{eval_results['accuracy']:.2%}")
     m2.metric("Weighted Precision", f"{eval_results['precision_weighted']:.2%}")
@@ -731,7 +831,7 @@ elif nav_option == "📈 Model Evaluation":
         st.table(pd.DataFrame(report_rows))
 
     st.markdown("---")
-    st.subheader("Top Influential N-Gram Features (Feature Importance)")
+    st.subheader("Top Influential N-Gram Features (Feature Weights)")
     st.markdown(
         "Words and bigrams learned by the model with highest weights in driving Positive and Negative classifications:"
     )
@@ -751,7 +851,6 @@ elif nav_option == "📈 Model Evaluation":
             neg_df = pd.DataFrame(top_features["Negative"], columns=["N-Gram Feature", "Logistic Regression Weight"])
             st.dataframe(neg_df, use_container_width=True)
 
-    # Download Evaluation Report
     if os.path.exists(REPORT_PATH):
         with open(REPORT_PATH, "r", encoding="utf-8") as rf:
             rep_text = rf.read()
@@ -764,10 +863,10 @@ elif nav_option == "📈 Model Evaluation":
 
 
 # -----------------------------------------------------------------------------
-# MODULE 7: ABOUT PROJECT & VIVA GUIDE
+# MODULE 7: ABOUT PROJECT & ARCHITECTURE
 # -----------------------------------------------------------------------------
-elif nav_option == "ℹ️ About Project & Viva Guide":
-    st.title("ℹ️ Project Architecture & Academic Viva Guide")
+elif nav_option == "ℹ️ About Project & Architecture":
+    st.title("ℹ️ Project Architecture & Viva Examination Guide")
     st.markdown("Comprehensive overview prepared for B.Tech Computer Science & AI project evaluation.")
 
     viva_tab1, viva_tab2, viva_tab3 = st.tabs([
@@ -780,71 +879,60 @@ elif nav_option == "ℹ️ About Project & Viva Guide":
         st.subheader("System Architecture")
         st.markdown("""
         ```
-        +-----------------------------------------------------------------+
-        |                    Streamlit UI (app.py)                        |
-        |  [Dashboard] [Single Predict] [Batch CSV] [NER Lab] [Morph Lab] |
-        +-----------------------------------------------------------------+
-                                      |
-                      +---------------+---------------+
-                      |                               |
-                      v                               v
-        +----------------------------+  +----------------------------+
-        |   Sentiment Pipeline       |  |     NLP Lab Modules        |
-        |      (analyzer.py)         |  |   (lab_features.py)        |
-        |  - Robust CSV Loader       |  |  - Exp 05: spaCy NER       |
-        |  - Negation-Aware Cleaner  |  |  - Regex Fallback Extractor|
-        |  - TF-IDF Vectorizer       |  |  - Exp 06: Morphology      |
-        |  - Logistic Regression     |  |  - Word Generation Rules   |
-        +----------------------------+  +----------------------------+
-                      |                               |
-                      v                               v
-        +----------------------------+  +----------------------------+
-        | Primary Dataset & Models   |  | Generated Outputs          |
-        | data/sentiment-analysis.csv|  | outputs/evaluation_report  |
-        | models/sentiment_model.pkl |  | outputs/confusion_matrix   |
-        +----------------------------+  +----------------------------+
+        +-----------------------------------------------------------------------------+
+        |                          Streamlit UI (app.py)                              |
+        |  [Dashboard] [Single Predict] [Batch CSV] [Entity/Phrase] [Lexical Engine]  |
+        +-----------------------------------------------------------------------------+
+                                              |
+                              +---------------+---------------+
+                              |                               |
+                              v                               v
+        +------------------------------------+  +------------------------------------+
+        |      Core Engine (analyzer.py)     |  |   Linguistic Engine (lab_features) |
+        |  - Robust CSV Quote Unwrapper      |  |  - POS Tagging (Penn Treebank)     |
+        |  - Script Validation & Filtration  |  |  - Phrase Chunking (NP & VP)       |
+        |  - Tokenization & Stemming         |  |  - Statistical NER (spaCy)         |
+        |  - Negation-Preserving Stopwords   |  |  - Free vs Bound Morphemes         |
+        |  - N-Gram Language Model & MLE     |  |  - Orthographic Word Generation    |
+        |  - TF-IDF + Logistic Regression    |  +------------------------------------+
+        +------------------------------------+                |
+                              |                               |
+                              v                               v
+        +------------------------------------+  +------------------------------------+
+        | Primary Dataset & Models           |  | Generated Outputs & Artifacts      |
+        | data/sentiment-analysis.csv        |  | outputs/evaluation_report.txt      |
+        | models/sentiment_model.pkl         |  | outputs/confusion_matrix.png       |
+        +------------------------------------+  +------------------------------------+
         ```
         """)
 
-        st.markdown("#### **Module Responsibilities:**")
-        st.markdown("""
-        1. **`analyzer.py`**:
-           - Manages dataset ingestion from `data/sentiment-analysis.csv`, stripping outer quotation encapsulation and handling encoding.
-           - Implements text cleaning that retains negation indicators (`not`, `no`, `never`, `n't`).
-           - Trains and saves the TF-IDF + Logistic Regression Scikit-Learn Pipeline.
-           - Provides transparent rule-based keyword categorization for customer feedback domains.
-        2. **`lab_features.py`**:
-           - Implements **NLP Lab Experiment 05** (Named Entity Recognition) using spaCy `en_core_web_sm` and a comparative Regex fallback.
-           - Implements **NLP Lab Experiment 06** (Morphological Analysis and Word Generation), dissecting affixes and applying orthographic transformation rules.
-        3. **`evaluate.py`**:
-           - Generates `evaluation_report.txt` and `confusion_matrix.png` autonomously.
-        4. **`app.py`**:
-           - Full multi-tab Streamlit dashboard delivering interactive visualization and laboratory tooling.
-        """)
-
     with viva_tab2:
-        st.subheader("Frequently Asked Questions for Project Viva")
+        st.subheader("Technical Questions & Answers for Project Viva")
 
         viva_qa = [
             (
-                "Q1: Why did you choose TF-IDF with Logistic Regression instead of Deep Learning (like BERT)?",
-                "For intermediate-sized domain datasets (~100 to 1,000 samples), TF-IDF combined with L2-regularized Logistic Regression provides high interpretability, instant training, zero GPU overhead, and eliminates overfitting common to high-parameter transformers. Logistic Regression weights directly expose the most positive and negative n-grams."
+                "Q1: Why is script validation and character filtration necessary before tokenization?",
+                "Real-world customer feedback frequently contains mixed encodings, non-ASCII emojis, or corrupted characters. Script validation verifies that the text belongs to the expected language/alphabet, while filtration cleans noise and URLs without corrupting sentiment cues."
             ),
             (
-                "Q2: Why is it critical NOT to remove negation words in text preprocessing?",
-                "Standard English stopword lists often include words like 'not', 'no', 'never'. If removed, 'the food was not good' becomes 'food good', which completely inverts the sentiment label. Our pipeline preserves negation cues and uses unigrams and bigrams (ngram_range=(1,2)) to capture phrases like 'not recommended' and 'not good'."
+                "Q2: Why must negation words be preserved during stop word removal?",
+                "Traditional stop word lists strip words like 'not', 'no', 'never'. In sentiment analysis, removing 'not' turns 'the service was not good' into 'service good', inverting the sentiment polarity. We protect negation tokens and model them as bigrams."
             ),
             (
-                "Q3: What is the difference between Inflectional and Derivational Morphology (Lab 06)?",
-                "Inflectional morphology modifies a word to express grammatical categories such as tense (-ed, -ing), number (-s, -es), or comparison (-er, -est) without altering the fundamental lexical category or meaning. Derivational morphology forms new words or shifts the syntactic category (e.g., verb 'connect' to noun 'connection', or adjective 'happy' to noun 'happiness' / opposite 'unhappy')."
+                "Q3: How do N-Gram models capture context in customer feedback?",
+                "Unigrams evaluate single isolated words. Bigrams and trigrams capture sequential context (e.g. 'poor quality', 'love product', 'terrible service'). Our system estimates sequence probability using Laplace add-1 smoothed Maximum Likelihood Estimation."
             ),
             (
-                "Q4: How does Named Entity Recognition (NER) assist customer feedback systems (Lab 05)?",
-                "NER automatically extracts specific actionable metadata from unstructured text—such as product names, customer service agent names, competitor mentions, transaction amounts, locations, and dates—allowing organizations to route complaints directly to the responsible regional department."
+                "Q4: What is the distinction between POS tagging and syntactic chunking?",
+                "POS tagging labels individual words with grammatical roles (Noun, Verb, Adjective). Chunking (shallow parsing) groups related words into non-overlapping grammatical phrases such as Noun Phrases (target products/services) and Verb Phrases (actions/experiences)."
             ),
             (
-                "Q5: How did you handle the unusual structure in `sentiment-analysis.csv`?",
-                "Inspection revealed that each CSV record was encapsulated in an outer set of quotation marks with internal escaped quotes. A naive reader parsed the whole row as a single column. We engineered a robust parser that unwraps outer quotes, unescapes inner quotations, strips whitespace, and parses all 7 original columns accurately."
+                "Q5: How does Named Entity Recognition (NER) differ from simple phrase chunking?",
+                "Chunking groups words syntactically based on grammar (e.g. any noun phrase), while NER identifies and classifies real-world entities into predefined semantic classes such as Persons, Organizations, Locations, Dates, and Monetary amounts."
+            ),
+            (
+                "Q6: What is the difference between Free and Bound Morphemes?",
+                "A free morpheme can stand alone as an independent meaningful word (e.g. 'play', 'service'). A bound morpheme cannot stand alone and must attach to a free morpheme (e.g. prefix 'un-', suffix '-ing', '-ed', '-ness')."
             )
         ]
 
@@ -861,7 +949,6 @@ elif nav_option == "ℹ️ About Project & Viva Guide":
         st.markdown("""
         - **Dataset Size:** The primary dataset `sentiment-analysis.csv` contains 96 curated feedback entries. While it achieves high accuracy on its stratified split, real-world generalization across varied informal vernaculars requires continuous learning on larger datasets.
         - **Binary Sentiment Scope:** The dataset contains strictly `Positive` and `Negative` classes. As instructed, no artificial `Neutral` class was fabricated.
-        - **Complaint Category Detection:** The dataset does not have labeled complaint categories. Category detection is transparently implemented as an explainable keyword-based rule system rather than an unverified supervised model.
-        - **Morphology Scope:** English contains irregular verbs (e.g., `go` -> `went`, `buy` -> `bought`). The morphological generator applies standard orthographic rules (CVC consonant doubling, sibilant pluralization, consonant+y modification) and is designed for academic demonstration.
+        - **Domain Categorization:** Category detection is transparently implemented as an explainable keyword-based rule system rather than an unverified supervised model.
+        - **Morphology Scope:** The word generation engine applies regular English orthographic patterns and is designed for academic demonstration.
         """)
-

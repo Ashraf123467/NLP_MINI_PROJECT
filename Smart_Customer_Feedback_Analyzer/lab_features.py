@@ -1,18 +1,11 @@
 """
-Smart Customer Feedback & Sentiment Analyzer - Lab Features (lab_features.py)
+Smart Customer Feedback & Sentiment Analyzer - Linguistic Features (lab_features.py)
 
-Explicit implementations for:
-1. NLP Lab Experiment 05: Named Entity Recognition (NER)
-   - spaCy-powered NER extraction and visual rendering.
-   - Transparent rule-based fallback NER (regex).
-2. NLP Lab Experiment 06: Morphological Analysis and Word Generation
-   - Morphological dissection: prefix, root/stem, suffix.
-   - Classification into Inflectional vs. Derivational morphology.
-   - Linguistic word generation applying standard English orthographic rules:
-     * CVC consonant doubling (e.g. stop -> stopped, stopping)
-     * Consonant + 'y' modification (e.g. study -> studies, studied)
-     * Silent 'e' dropping (e.g. create -> created, creating)
-     * Sibilant pluralization (-s, -es, -ies)
+Implementations for:
+1. Morphological Analysis (Free vs Bound morphemes, Root identification, Inflectional vs Derivational).
+2. Part-of-Speech (POS) Tagging & Syntactic Chunking (Noun phrases, Verb phrases, Shallow parsing).
+3. Named Entity Recognition (NER) (spaCy statistical pipeline & rule-based regex fallback).
+4. Word Generation Engine (CVC doubling, consonant + y, silent 'e' drop, sibilant pluralization).
 """
 
 import re
@@ -27,14 +20,203 @@ try:
         nlp = spacy.load("en_core_web_sm")
         SPACY_AVAILABLE = True
     except Exception:
-        # Model not found or could not load
         SPACY_AVAILABLE = False
 except ImportError:
     SPACY_AVAILABLE = False
 
+# Try loading NLTK components
+NLTK_AVAILABLE = False
+try:
+    import nltk
+    from nltk.tokenize import word_tokenize
+    from nltk import pos_tag, RegexpParser
+    NLTK_AVAILABLE = True
+except ImportError:
+    NLTK_AVAILABLE = False
+
 
 # =============================================================================
-# NLP LAB EXPERIMENT 05 — NAMED ENTITY RECOGNITION (NER)
+# PART-OF-SPEECH (POS) TAGGING & SYNTACTIC CHUNKING
+# =============================================================================
+
+PENN_TAG_EXPLANATIONS = {
+    "CC": "Coordinating conjunction (and, but, or)",
+    "CD": "Cardinal number (one, two, 123)",
+    "DT": "Determiner (the, a, this, that)",
+    "EX": "Existential there (there is, there are)",
+    "FW": "Foreign word",
+    "IN": "Preposition or subordinating conjunction (in, of, at, on)",
+    "JJ": "Adjective (good, terrible, fast)",
+    "JJR": "Adjective, comparative (better, faster)",
+    "JJS": "Adjective, superlative (best, fastest)",
+    "LS": "List item marker",
+    "MD": "Modal auxiliary (can, could, will, should)",
+    "NN": "Noun, singular or mass (service, product, store)",
+    "NNS": "Noun, plural (services, products, reviews)",
+    "NNP": "Proper noun, singular (Amazon, Paris, Twitter)",
+    "NNPS": "Proper noun, plural (Americans, Airlines)",
+    "PDT": "Predeterminer (all, both, half)",
+    "POS": "Possessive ending ('s)",
+    "PRP": "Personal pronoun (I, you, he, they, it)",
+    "PRP$": "Possessive pronoun (my, your, their, its)",
+    "RB": "Adverb (very, extremely, slowly, not)",
+    "RBR": "Adverb, comparative (better, faster)",
+    "RBS": "Adverb, superlative (best, fastest)",
+    "RP": "Particle (give up, take off)",
+    "TO": "to (to go, to do)",
+    "UH": "Interjection (oh, wow, oops)",
+    "VB": "Verb, base form (love, arrive, serve)",
+    "VBD": "Verb, past tense (loved, arrived, served)",
+    "VBG": "Verb, gerund / present participle (loving, arriving)",
+    "VBN": "Verb, past participle (loved, arrived, served)",
+    "VBP": "Verb, non-3rd person singular present (love, arrive)",
+    "VBZ": "Verb, 3rd person singular present (loves, arrives)",
+    "WDT": "Wh-determiner (which, that)",
+    "WP": "Wh-pronoun (who, what)",
+    "WP$": "Possessive wh-pronoun (whose)",
+    "WRB": "Wh-adverb (where, when, why, how)"
+}
+
+
+def extract_pos_tags(text: str) -> List[Dict[str, str]]:
+    """
+    Assigns grammatical Part-of-Speech (POS) tags to each token.
+    Uses NLTK pos_tag with spaCy fallback, returning token, tag, and linguistic category.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return []
+
+    tagged_tokens = []
+
+    if NLTK_AVAILABLE:
+        try:
+            tokens = word_tokenize(text)
+            nltk_tags = pos_tag(tokens)
+            for word, tag in nltk_tags:
+                desc = PENN_TAG_EXPLANATIONS.get(tag, "Grammatical marker")
+                # Group into universal high-level category
+                if tag.startswith("NN"):
+                    category = "Noun"
+                elif tag.startswith("VB"):
+                    category = "Verb"
+                elif tag.startswith("JJ"):
+                    category = "Adjective"
+                elif tag.startswith("RB"):
+                    category = "Adverb"
+                elif tag.startswith("PRP"):
+                    category = "Pronoun"
+                elif tag == "DT":
+                    category = "Determiner"
+                elif tag == "IN":
+                    category = "Preposition"
+                else:
+                    category = "Other"
+
+                tagged_tokens.append({
+                    "token": word,
+                    "pos_tag": tag,
+                    "category": category,
+                    "description": desc
+                })
+            return tagged_tokens
+        except Exception:
+            pass
+
+    # Fallback to spaCy if NLTK tagger is unavailable
+    if SPACY_AVAILABLE and nlp is not None:
+        doc = nlp(text)
+        for token in doc:
+            tagged_tokens.append({
+                "token": token.text,
+                "pos_tag": token.tag_,
+                "category": token.pos_.capitalize(),
+                "description": PENN_TAG_EXPLANATIONS.get(token.tag_, spacy.explain(token.tag_) or "Part of speech")
+            })
+        return tagged_tokens
+
+    # Minimal regex fallback
+    words = re.findall(r"\b\w+\b", text)
+    return [{"token": w, "pos_tag": "UNK", "category": "Word", "description": "Token"} for w in words]
+
+
+def extract_syntactic_chunks(text: str) -> Dict[str, Any]:
+    """
+    Performs Shallow Parsing / Chunking on customer feedback.
+    Extracts meaningful multi-word grammatical phrases:
+    - Noun Phrases (NP): Target entities/subjects (e.g. 'the customer support', 'subpar quality')
+    - Verb Phrases (VP): Customer actions/experiences (e.g. 'was disappointed', 'arrived damaged')
+    """
+    if not isinstance(text, str) or not text.strip():
+        return {"chunks": [], "noun_phrases": [], "verb_phrases": []}
+
+    chunks = []
+    noun_phrases = []
+    verb_phrases = []
+
+    # Approach 1: NLTK RegexpParser (Classic Lab grammar)
+    if NLTK_AVAILABLE:
+        try:
+            tokens = word_tokenize(text)
+            tagged = pos_tag(tokens)
+
+            # Grammar for Noun Phrases and Verb Phrases
+            grammar = r"""
+              NP: {<DT>?<JJ.*>*<NN.*>+}
+              VP: {<VB.*><RB.*>*<VB.*>*}
+            """
+            cp = RegexpParser(grammar)
+            tree = cp.parse(tagged)
+
+            for subtree in tree.subtrees():
+                if subtree.label() in ("NP", "VP"):
+                    phrase_tokens = [w for w, t in subtree.leaves()]
+                    phrase = " ".join(phrase_tokens)
+                    label = subtree.label()
+                    chunk_type = "Noun Phrase (Target Subject)" if label == "NP" else "Verb Phrase (Action/State)"
+                    chunks.append({
+                        "phrase": phrase,
+                        "type": label,
+                        "description": chunk_type,
+                        "tokens": phrase_tokens
+                    })
+                    if label == "NP":
+                        noun_phrases.append(phrase)
+                    else:
+                        verb_phrases.append(phrase)
+
+            return {
+                "chunks": chunks,
+                "noun_phrases": noun_phrases,
+                "verb_phrases": verb_phrases,
+                "engine": "NLTK RegexpParser Chunking"
+            }
+        except Exception:
+            pass
+
+    # Approach 2: spaCy Noun Chunks
+    if SPACY_AVAILABLE and nlp is not None:
+        doc = nlp(text)
+        for chunk in doc.noun_chunks:
+            chunks.append({
+                "phrase": chunk.text,
+                "type": "NP",
+                "description": "Noun Phrase (Target Subject)",
+                "tokens": [t.text for t in chunk]
+            })
+            noun_phrases.append(chunk.text)
+
+        return {
+            "chunks": chunks,
+            "noun_phrases": noun_phrases,
+            "verb_phrases": verb_phrases,
+            "engine": "spaCy Dependency Noun Chunks"
+        }
+
+    return {"chunks": [], "noun_phrases": [], "verb_phrases": [], "engine": "None"}
+
+
+# =============================================================================
+# NAMED ENTITY RECOGNITION (NER)
 # =============================================================================
 
 def extract_entities_spacy(text: str) -> Dict[str, Any]:
@@ -63,7 +245,6 @@ def extract_entities_spacy(text: str) -> Dict[str, Any]:
             "description": explanation
         })
 
-    # Generate displaCy HTML
     try:
         html = spacy.displacy.render(doc, style="ent", page=False)
     except Exception:
@@ -82,7 +263,6 @@ def extract_entities_fallback(text: str) -> Dict[str, Any]:
     """
     Lightweight rule-based fallback entity extractor using regular expressions.
     Used when spaCy is unavailable or for comparative lab demonstration.
-    NOTE: Transparently labeled as regex pattern matching, NOT a statistical NER model.
     """
     entities = []
 
@@ -148,7 +328,7 @@ def extract_entities_fallback(text: str) -> Dict[str, Any]:
 def analyze_entities(text: str, force_fallback: bool = False) -> Dict[str, Any]:
     """
     Unified entry point for entity extraction.
-    Defaults to spaCy statistical NER; gracefully switches to fallback if requested or unavailable.
+    Defaults to spaCy statistical NER; switches to fallback if requested or unavailable.
     """
     if force_fallback or not SPACY_AVAILABLE:
         return extract_entities_fallback(text)
@@ -156,10 +336,9 @@ def analyze_entities(text: str, force_fallback: bool = False) -> Dict[str, Any]:
 
 
 # =============================================================================
-# NLP LAB EXPERIMENT 06 — MORPHOLOGICAL ANALYSIS & WORD GENERATION
+# MORPHOLOGICAL ANALYSIS
 # =============================================================================
 
-# Known morphological affixes for academic demonstration
 COMMON_PREFIXES = {
     "un": {"type": "Derivational", "meaning": "Not / Opposite of (e.g. unhappy, unlock)"},
     "dis": {"type": "Derivational", "meaning": "Not / Absence of / Reversal (e.g. disappoint, disconnect)"},
@@ -196,15 +375,17 @@ COMMON_SUFFIXES = {
 def analyze_morphology(word: str) -> Dict[str, Any]:
     """
     Performs morphological decomposition on an English word:
-    - Identifies prefix, stem/root candidate, and suffix.
+    - Identifies Free Morphemes (root/base that stands alone).
+    - Identifies Bound Morphemes (prefixes and suffixes).
     - Classifies the morphological process (Inflectional vs Derivational).
-    - Explains morphological rules for academic viva.
     """
     word_clean = word.strip().lower()
     if not word_clean or not word_clean.isalpha():
         return {
             "original_word": word,
-            "root": word_clean,
+            "root_candidate": word_clean,
+            "free_morpheme": word_clean,
+            "bound_morphemes": [],
             "prefix": None,
             "suffix": None,
             "morphology_type": "None / Non-alphabetic",
@@ -216,43 +397,40 @@ def analyze_morphology(word: str) -> Dict[str, Any]:
     prefix_info = None
     suffix_info = None
     working_stem = word_clean
+    bound_morphemes = []
 
-    # Check prefixes (longest match first)
+    # Check prefixes
     sorted_prefixes = sorted(COMMON_PREFIXES.keys(), key=len, reverse=True)
     for pfx in sorted_prefixes:
         if working_stem.startswith(pfx) and len(working_stem) > len(pfx) + 2:
             detected_prefix = pfx
             prefix_info = COMMON_PREFIXES[pfx]
+            bound_morphemes.append(f"Prefix '{pfx}-' (Bound Morpheme, {prefix_info['type']})")
             working_stem = working_stem[len(pfx):]
             break
 
-    # Check suffixes (longest match first)
+    # Check suffixes
     sorted_suffixes = sorted(COMMON_SUFFIXES.keys(), key=len, reverse=True)
     for sfx in sorted_suffixes:
         if working_stem.endswith(sfx) and len(working_stem) > len(sfx) + 2:
             detected_suffix = sfx
             suffix_info = COMMON_SUFFIXES[sfx]
+            bound_morphemes.append(f"Suffix '-{sfx}' (Bound Morpheme, {suffix_info['type']})")
             candidate_stem = working_stem[:-len(sfx)]
 
-            # Reconstruct potential root based on spelling rules
-            # e.g., 'happi' from 'happiness' -> 'happy'
+            # Reconstruct root
             if candidate_stem.endswith("i") and len(candidate_stem) > 2:
                 candidate_stem = candidate_stem[:-1] + "y"
-            # e.g., 'creati' from 'creating' -> 'create'
-            elif sfx in ("ing", "ed", "able") and len(candidate_stem) >= 3:
-                # Test if silent 'e' was dropped
-                if not candidate_stem.endswith("e") and candidate_stem[-1] in "bcdfgptmnszv":
-                    # Keep both or add e candidate
-                    pass
-            # e.g., doubled consonant: 'stopp' from 'stopped' -> 'stop'
             if len(candidate_stem) >= 4 and candidate_stem[-1] == candidate_stem[-2] and candidate_stem[-1] not in "ls":
                 candidate_stem = candidate_stem[:-1]
 
             working_stem = candidate_stem
             break
 
-    # Determine morphological category
-    morph_type = "Base / Root Word"
+    # Free vs Bound classification
+    free_morpheme = working_stem
+
+    morph_type = "Base Free Morpheme (Monomorphemic)"
     if detected_prefix and detected_suffix:
         morph_type = f"Combined ({prefix_info['type']} Prefix + {suffix_info['type']} Suffix)"
     elif detected_prefix:
@@ -261,16 +439,19 @@ def analyze_morphology(word: str) -> Dict[str, Any]:
         morph_type = f"Suffixation ({suffix_info['type']})"
 
     explanation_lines = []
+    explanation_lines.append(f"Free Morpheme (Root/Stem): '{free_morpheme}'")
     if detected_prefix:
-        explanation_lines.append(f"Prefix '{detected_prefix}-': {prefix_info['meaning']}")
+        explanation_lines.append(f"Bound Prefix '{detected_prefix}-': {prefix_info['meaning']}")
     if detected_suffix:
-        explanation_lines.append(f"Suffix '-{detected_suffix}': {suffix_info['category']} ({suffix_info['example']})")
+        explanation_lines.append(f"Bound Suffix '-{detected_suffix}': {suffix_info['category']} ({suffix_info['example']})")
     if not detected_prefix and not detected_suffix:
-        explanation_lines.append(f"'{word_clean}' functions as a base/monomorphemic root or uses irregular morphology.")
+        explanation_lines.append(f"'{word_clean}' consists of a single root/free morpheme.")
 
     return {
         "original_word": word,
-        "root_candidate": working_stem,
+        "root_candidate": free_morpheme,
+        "free_morpheme": free_morpheme,
+        "bound_morphemes": bound_morphemes if bound_morphemes else ["None"],
         "prefix": detected_prefix,
         "prefix_info": prefix_info,
         "suffix": detected_suffix,
@@ -280,9 +461,13 @@ def analyze_morphology(word: str) -> Dict[str, Any]:
     }
 
 
+# =============================================================================
+# WORD GENERATION ENGINE
+# =============================================================================
+
 def generate_word_forms(base_word: str) -> Dict[str, Any]:
     """
-    Generates inflectional and derivational forms from a base English word.
+    Generates inflectional and derivational forms from a base English root word.
     Applies standard linguistic orthographic rules:
     1. Consonant + y -> -ies (present), -ied (past), -ying (participle)
     2. Sibilant sounds (-s, -ss, -sh, -ch, -x, -z) -> -es
@@ -300,7 +485,7 @@ def generate_word_forms(base_word: str) -> Dict[str, Any]:
     rules_applied = []
     vowels = "aeiou"
 
-    # --- 1. Plural / 3rd Person Singular Present (-s / -es / -ies) ---
+    # 1. 3rd Person Present / Plural (-s / -es / -ies)
     if word.endswith("y") and len(word) > 1 and word[-2] not in vowels:
         form_3rd = word[:-1] + "ies"
         rules_applied.append("Consonant + 'y' Rule: replaced 'y' with 'ies' for 3rd person singular / plural.")
@@ -311,7 +496,7 @@ def generate_word_forms(base_word: str) -> Dict[str, Any]:
         form_3rd = word + "s"
         rules_applied.append("Standard Rule: added inflectional '-s'.")
 
-    # --- 2. Past Tense / Past Participle (-ed / -ied / doubled consonant + ed) ---
+    # 2. Past Tense / Participle (-ed / -ied / doubled consonant + ed)
     is_cvc = (
         len(word) >= 3
         and word[-1] not in vowels
@@ -333,7 +518,7 @@ def generate_word_forms(base_word: str) -> Dict[str, Any]:
         form_past = word + "ed"
         rules_applied.append("Standard Rule: added inflectional '-ed' for past tense.")
 
-    # --- 3. Present Participle / Gerund (-ing) ---
+    # 3. Present Participle / Gerund (-ing)
     if word.endswith("ie"):
         form_ing = word[:-2] + "ying"
         rules_applied.append("'-ie' to '-ying' Rule (e.g. lie -> lying).")
@@ -347,7 +532,7 @@ def generate_word_forms(base_word: str) -> Dict[str, Any]:
         form_ing = word + "ing"
         rules_applied.append("Standard Rule: appended inflectional '-ing'.")
 
-    # --- 4. Agent Noun / Comparative (-er) ---
+    # 4. Agent Noun / Comparative (-er)
     if word.endswith("e"):
         form_er = word + "r"
     elif word.endswith("y") and len(word) > 1 and word[-2] not in vowels:
@@ -357,9 +542,8 @@ def generate_word_forms(base_word: str) -> Dict[str, Any]:
     else:
         form_er = word + "er"
 
-    # --- 5. Derivational Forms (Negative, Adverb, Abstract Noun) ---
+    # 5. Derivational Forms
     derivations = {}
-    # Negative prefix
     if word.startswith(("b", "m", "p")):
         derivations["Negative Form (Derivational)"] = f"im{word} / un{word}"
     elif word.startswith(("l",)):
@@ -369,7 +553,6 @@ def generate_word_forms(base_word: str) -> Dict[str, Any]:
     else:
         derivations["Negative Form (Derivational)"] = f"un{word} / dis{word}"
 
-    # Adverb form (-ly)
     if word.endswith("y") and len(word) > 1 and word[-2] not in vowels:
         derivations["Adverbial Form (-ly)"] = word[:-1] + "ily"
     elif word.endswith("le") and len(word) > 2 and word[-3] not in vowels:
@@ -377,7 +560,6 @@ def generate_word_forms(base_word: str) -> Dict[str, Any]:
     else:
         derivations["Adverbial Form (-ly)"] = word + "ly"
 
-    # Quality / State Noun (-ness / -ment / -tion)
     if word.endswith("y") and len(word) > 1 and word[-2] not in vowels:
         derivations["State Noun (-ness)"] = word[:-1] + "iness"
     else:
@@ -397,4 +579,3 @@ def generate_word_forms(base_word: str) -> Dict[str, Any]:
         "forms": forms,
         "rules_applied": rules_applied
     }
-
