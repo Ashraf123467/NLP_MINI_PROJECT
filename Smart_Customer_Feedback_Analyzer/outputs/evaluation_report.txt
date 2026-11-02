@@ -1,0 +1,80 @@
+======================================================================
+ SMART CUSTOMER FEEDBACK & SENTIMENT ANALYZER
+ Model Evaluation & Performance Report
+======================================================================
+
+1. DATASET SUMMARY
+   - Dataset File: sentiment-analysis.csv
+   - Total Verified Records: 96
+   - Positive Sentiments: 53 (55.2%)
+   - Negative Sentiments: 43 (44.8%)
+   - Unique Feedback Texts: 75
+   - Verified Sources: 27 (Twitter, Yelp Reviews, IMDb, Online Forum, TripAdvisor, Amazon Reviews...)
+   - Verified Locations: 11 (New York, Los Angeles, London, Toronto, Paris, San Francisco...)
+
+2. EXPERIMENTAL SETUP & PIPELINE
+   - Feature Extraction: TF-IDF Vectorizer (ngram_range=(1, 2), sublinear_tf=True)
+   - Stop Words: Custom list (Preserves sentiment negations: 'not', 'no', 'never', etc.)
+   - Classifier: Logistic Regression (C=1.0, max_iter=1000, class_weight='balanced')
+   - Split Strategy: Stratified Train-Test Split (80% Train, 20% Test)
+   - Training Samples: 76
+   - Testing Samples: 20
+
+3. CLASSIFICATION METRICS (TEST SET)
+   - Accuracy:            1.0000 (100.00%)
+   - Weighted Precision:  1.0000
+   - Weighted Recall:     1.0000
+   - Weighted F1-Score:   1.0000
+   - Macro F1-Score:      1.0000
+
+4. DETAILED CLASSIFICATION REPORT
+              precision    recall  f1-score   support
+
+    Negative       1.00      1.00      1.00         9
+    Positive       1.00      1.00      1.00        11
+
+    accuracy                           1.00        20
+   macro avg       1.00      1.00      1.00        20
+weighted avg       1.00      1.00      1.00        20
+
+
+5. CONFUSION MATRIX
+   Labels: ['Negative', 'Positive']
+   Matrix:
+[[ 9  0]
+ [ 0 11]]
+   - True Negative:  9
+   - False Positive: 0
+   - False Negative: 0
+   - True Positive:  11
+
+6. TOP INFLUENTIAL N-GRAM FEATURES (FEATURE IMPORTANCE)
+   Class 'Positive':
+      * love                 (Weight: +0.5467)
+      * love product         (Weight: +0.4036)
+      * song                 (Weight: +0.3970)
+      * friendly             (Weight: +0.3661)
+      * store                (Weight: +0.3585)
+      * service store        (Weight: +0.3585)
+      * incredible           (Weight: +0.3446)
+      * cannot               (Weight: +0.3329)
+      * movie                (Weight: +0.3205)
+      * loved                (Weight: +0.3139)
+   Class 'Negative':
+      * terrible             (Weight: +0.9917)
+      * disappointed         (Weight: +0.8790)
+      * service terrible     (Weight: +0.6961)
+      * service              (Weight: +0.5660)
+      * food restaurant      (Weight: +0.5124)
+      * restaurant           (Weight: +0.5124)
+      * support              (Weight: +0.4764)
+      * disappointed customer (Weight: +0.4437)
+      * customer             (Weight: +0.4387)
+      * confusing            (Weight: +0.4382)
+
+7. ACADEMIC NOTES FOR VIVA
+   - Dataset represents real customer feedback across multiple digital platforms.
+   - High test accuracy reflects distinct emotional lexicons in the curated dataset.
+   - Stratified splitting guarantees that class proportions are preserved in test sets.
+   - Preserving negations is critical: 'not good' vs 'good' are separated via bigrams.
+======================================================================
