@@ -338,180 +338,206 @@ elif nav_option == "🔍 Single Feedback Analysis":
         st.error(f"Error loading system assets: {e}")
         st.stop()
 
+    # -------------------------------------------------------------------------
+    # Streamlit Session State Management for Feedback Text Persistence
+    # -------------------------------------------------------------------------
+    if "feedback_input" not in st.session_state:
+        st.session_state["feedback_input"] = ""
+    if "feedback_analyzed" not in st.session_state:
+        st.session_state["feedback_analyzed"] = False
+    if "current_analyzed_text" not in st.session_state:
+        st.session_state["current_analyzed_text"] = ""
+
+    # Verified representative sample sentences derived directly from sentiment-analysis.csv
+    preset_pos = "I love this product! The quality is outstanding and arrived quickly in New York."
+    preset_sup = "I'm extremely disappointed with their customer support. No resolution provided."
+    preset_web = "Their website is so confusing, slow, and poorly designed. Difficult to navigate."
+    preset_din = "Just had the best meal of my life! Delicious food and top-notch service."
+
+    def load_preset_feedback(preset_text: str):
+        """Callback to store selected preset into session state without resetting on rerun."""
+        st.session_state["feedback_input"] = preset_text
+        st.session_state["feedback_analyzed"] = False
+        st.session_state["current_analyzed_text"] = ""
+
     # Pre-filled samples for demonstration
     st.markdown("##### **Quick Preset Samples (from dataset):**")
     s_col1, s_col2, s_col3, s_col4 = st.columns(4)
-    sample_text = ""
-    if s_col1.button("Sample: Positive Product"):
-        sample_text = "I love this product! The quality is outstanding and arrived quickly in New York."
-    if s_col2.button("Sample: Support Complaint"):
-        sample_text = "I'm extremely disappointed with their customer support. No resolution provided."
-    if s_col3.button("Sample: Website Review"):
-        sample_text = "Their website is so confusing, slow, and poorly designed. Difficult to navigate."
-    if s_col4.button("Sample: Dining Experience"):
-        sample_text = "Just had the best meal of my life! Delicious food and top-notch service."
+    s_col1.button("Sample: Positive Product", on_click=load_preset_feedback, args=(preset_pos,))
+    s_col2.button("Sample: Support Complaint", on_click=load_preset_feedback, args=(preset_sup,))
+    s_col3.button("Sample: Website Review", on_click=load_preset_feedback, args=(preset_web,))
+    s_col4.button("Sample: Dining Experience", on_click=load_preset_feedback, args=(preset_din,))
 
     user_input = st.text_area(
         "Enter Customer Feedback / Review Text:",
-        value=sample_text,
+        key="feedback_input",
         height=100,
         placeholder="Type or paste any customer review or feedback here..."
     )
 
-    if st.button("🚀 Analyze Feedback", type="primary"):
+    analyze_btn_clicked = st.button("🚀 Analyze Feedback", type="primary")
+
+    if analyze_btn_clicked:
         if not user_input.strip():
             st.warning("Please enter feedback text to analyze.")
+            st.session_state["feedback_analyzed"] = False
+            st.session_state["current_analyzed_text"] = ""
         else:
-            with st.spinner("Executing linguistic and sentiment analysis..."):
-                pred_result = predict_sentiment(user_input, pipeline)
-                category_result = detect_feedback_category(user_input)
-                prep_stages = get_preprocessing_pipeline_breakdown(user_input)
-                pos_tags = extract_pos_tags(user_input)
-                chunks_info = extract_syntactic_chunks(user_input)
-                ngram_prob_info = calculate_ngram_probabilities(df_corpus["Text"].tolist(), user_input, n=2)
-                ner_result = analyze_entities(user_input)
+            st.session_state["feedback_analyzed"] = True
+            st.session_state["current_analyzed_text"] = user_input.strip()
 
-            st.markdown("---")
-            st.subheader("Analysis Results")
+    if st.session_state.get("feedback_analyzed", False) and st.session_state.get("current_analyzed_text", "").strip():
+        analysis_text = st.session_state["current_analyzed_text"]
+        with st.spinner("Executing linguistic and sentiment analysis..."):
+            pred_result = predict_sentiment(analysis_text, pipeline)
+            category_result = detect_feedback_category(analysis_text)
+            prep_stages = get_preprocessing_pipeline_breakdown(analysis_text)
+            pos_tags = extract_pos_tags(analysis_text)
+            chunks_info = extract_syntactic_chunks(analysis_text)
+            ngram_prob_info = calculate_ngram_probabilities(df_corpus["Text"].tolist(), analysis_text, n=2)
+            ner_result = analyze_entities(analysis_text)
 
-            # Sentiment & Domain Row
-            res_col1, res_col2 = st.columns([1, 1])
+        st.markdown("---")
+        st.subheader("Analysis Results")
 
-            with res_col1:
-                st.markdown("#### **Sentiment Classification**")
-                pred = pred_result["prediction"]
-                conf = pred_result["confidence"]
+        # Sentiment & Domain Row
+        res_col1, res_col2 = st.columns([1, 1])
 
-                if pred == "Positive":
-                    st.markdown(f'<span class="badge-pos">● POSITIVE SENTIMENT</span>', unsafe_allow_html=True)
+        with res_col1:
+            st.markdown("#### **Sentiment Classification**")
+            pred = pred_result["prediction"]
+            conf = pred_result["confidence"]
+
+            if pred == "Positive":
+                st.markdown(f'<span class="badge-pos">● POSITIVE SENTIMENT</span>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<span class="badge-neg">● NEGATIVE SENTIMENT</span>', unsafe_allow_html=True)
+
+            st.markdown(f"**Model Confidence:** `{conf:.2%}`")
+            st.progress(conf)
+
+            st.markdown("**Class Probabilities:**")
+            for cls, prob in pred_result["probabilities"].items():
+                st.write(f"- **{cls}:** `{prob:.2%}`")
+
+        with res_col2:
+            st.markdown("#### **Feedback Domain & Scope**")
+            st.info(f"🏷️ **Detected Domain:** **{category_result['category']}**")
+            if category_result["matched_keywords"]:
+                st.caption(f"Matched keyword(s): `{', '.join(category_result['matched_keywords'])}`")
+            st.caption(f"ℹ️ {category_result['note']}")
+
+        st.markdown("---")
+
+        # Detailed Linguistic Analysis Tabs
+        tab_prep, tab_pos_chunks, tab_ngram, tab_ner = st.tabs([
+            "🧹 Text Preprocessing Stages",
+            "🏷️ POS Tagging & Phrase Chunks",
+            "📊 N-Gram Model & Sentence Likelihood",
+            "🎯 Named Entity Extraction"
+        ])
+
+        # TAB 1: PREPROCESSING STAGES
+        with tab_prep:
+            st.subheader("Linguistic Preprocessing Pipeline Breakdown")
+            st.markdown(
+                "Demonstrates the step-by-step transformation from raw customer text into clean feature tokens:"
+            )
+
+            st.markdown("##### **1. Script Validation & Character Check**")
+            s_valid = prep_stages["script_validation"]
+            st.write(f"- **Script Classification:** `{s_valid['script']}`")
+            st.write(f"- **Encoding Status:** `{s_valid['message']}`")
+
+            st.markdown("##### **2. Noise & Punctuation Filtration**")
+            st.write("Cleaned text after removing URLs and extraneous punctuation:")
+            st.code(prep_stages["filtered_text"], language="text")
+
+            st.markdown("##### **3. Tokenization**")
+            p_c1, p_c2 = st.columns(2)
+            with p_c1:
+                st.write(f"**Sentence Tokens ({len(prep_stages['sentences'])}):**")
+                st.write(prep_stages["sentences"])
+            with p_c2:
+                st.write(f"**Word Tokens ({len(prep_stages['word_tokens'])}):**")
+                st.write(prep_stages["word_tokens"][:15])
+
+            st.markdown("##### **4. Stop Word Removal (Negation Preservation)**")
+            st.write("**Tokens with Negation Preserved (Used in Sentiment Analysis):**")
+            st.write(prep_stages["stopwords_removed_preserved"])
+            st.caption("Notice: Critical sentiment negations (e.g. 'not', 'no', 'never') are explicitly retained.")
+
+            st.markdown("##### **5. Stemming (Porter Stemmer)**")
+            st.write("**Stemmed Root Tokens:**")
+            st.write(prep_stages["stemmed_tokens"])
+            st.caption("Demonstrates word ending truncation to normalize morphological variants.")
+
+        # TAB 2: POS TAGGING & SYNTACTIC CHUNKS
+        with tab_pos_chunks:
+            st.subheader("Part-of-Speech (POS) Tagging & Syntactic Chunks")
+            st.markdown(
+                "Analyzes grammatical categories to separate target entities (Noun Phrases) from evaluative actions (Verb Phrases)."
+            )
+
+            col_pos, col_chk = st.columns([1, 1])
+
+            with col_pos:
+                st.markdown("##### **POS Tagging Table**")
+                if pos_tags:
+                    pos_df = pd.DataFrame(pos_tags)[["token", "pos_tag", "category", "description"]]
+                    pos_df.columns = ["Token", "Penn Tag", "Category", "Linguistic Role"]
+                    st.dataframe(pos_df, use_container_width=True, height=280)
                 else:
-                    st.markdown(f'<span class="badge-neg">● NEGATIVE SENTIMENT</span>', unsafe_allow_html=True)
+                    st.write("No tokens tagged.")
 
-                st.markdown(f"**Model Confidence:** `{conf:.2%}`")
-                st.progress(conf)
-
-                st.markdown("**Class Probabilities:**")
-                for cls, prob in pred_result["probabilities"].items():
-                    st.write(f"- **{cls}:** `{prob:.2%}`")
-
-            with res_col2:
-                st.markdown("#### **Feedback Domain & Scope**")
-                st.info(f"🏷️ **Detected Domain:** **{category_result['category']}**")
-                if category_result["matched_keywords"]:
-                    st.caption(f"Matched keyword(s): `{', '.join(category_result['matched_keywords'])}`")
-                st.caption(f"ℹ️ {category_result['note']}")
-
-            st.markdown("---")
-
-            # Detailed Linguistic Analysis Tabs
-            tab_prep, tab_pos_chunks, tab_ngram, tab_ner = st.tabs([
-                "🧹 Text Preprocessing Stages",
-                "🏷️ POS Tagging & Phrase Chunks",
-                "📊 N-Gram Model & Sentence Likelihood",
-                "🎯 Named Entity Extraction"
-            ])
-
-            # TAB 1: PREPROCESSING STAGES
-            with tab_prep:
-                st.subheader("Linguistic Preprocessing Pipeline Breakdown")
-                st.markdown(
-                    "Demonstrates the step-by-step transformation from raw customer text into clean feature tokens:"
-                )
-
-                st.markdown("##### **1. Script Validation & Character Check**")
-                s_valid = prep_stages["script_validation"]
-                st.write(f"- **Script Classification:** `{s_valid['script']}`")
-                st.write(f"- **Encoding Status:** `{s_valid['message']}`")
-
-                st.markdown("##### **2. Noise & Punctuation Filtration**")
-                st.write("Cleaned text after removing URLs and extraneous punctuation:")
-                st.code(prep_stages["filtered_text"], language="text")
-
-                st.markdown("##### **3. Tokenization**")
-                p_c1, p_c2 = st.columns(2)
-                with p_c1:
-                    st.write(f"**Sentence Tokens ({len(prep_stages['sentences'])}):**")
-                    st.write(prep_stages["sentences"])
-                with p_c2:
-                    st.write(f"**Word Tokens ({len(prep_stages['word_tokens'])}):**")
-                    st.write(prep_stages["word_tokens"][:15])
-
-                st.markdown("##### **4. Stop Word Removal (Negation Preservation)**")
-                st.write("**Tokens with Negation Preserved (Used in Sentiment Analysis):**")
-                st.write(prep_stages["stopwords_removed_preserved"])
-                st.caption("Notice: Critical sentiment negations (e.g. 'not', 'no', 'never') are explicitly retained.")
-
-                st.markdown("##### **5. Stemming (Porter Stemmer)**")
-                st.write("**Stemmed Root Tokens:**")
-                st.write(prep_stages["stemmed_tokens"])
-                st.caption("Demonstrates word ending truncation to normalize morphological variants.")
-
-            # TAB 2: POS TAGGING & SYNTACTIC CHUNKS
-            with tab_pos_chunks:
-                st.subheader("Part-of-Speech (POS) Tagging & Syntactic Chunks")
-                st.markdown(
-                    "Analyzes grammatical categories to separate target entities (Noun Phrases) from evaluative actions (Verb Phrases)."
-                )
-
-                col_pos, col_chk = st.columns([1, 1])
-
-                with col_pos:
-                    st.markdown("##### **POS Tagging Table**")
-                    if pos_tags:
-                        pos_df = pd.DataFrame(pos_tags)[["token", "pos_tag", "category", "description"]]
-                        pos_df.columns = ["Token", "Penn Tag", "Category", "Linguistic Role"]
-                        st.dataframe(pos_df, use_container_width=True, height=280)
-                    else:
-                        st.write("No tokens tagged.")
-
-                with col_chk:
-                    st.markdown("##### **Syntactic Chunks (Shallow Parsing)**")
-                    st.caption(f"Parser Engine: {chunks_info.get('engine', 'NLTK')}")
-                    if chunks_info["chunks"]:
-                        chk_df = pd.DataFrame(chunks_info["chunks"])[["phrase", "type", "description"]]
-                        chk_df.columns = ["Extracted Phrase", "Chunk Type", "Semantic Function"]
-                        st.dataframe(chk_df, use_container_width=True, height=280)
-                    else:
-                        st.info("No multi-word phrase chunks detected in this input.")
-
-            # TAB 3: N-GRAMS & LANGUAGE MODELING
-            with tab_ngram:
-                st.subheader("N-Gram Representation & Sequence Probability")
-                st.markdown(
-                    "Extracts unigram and bigram sequences and calculates statistical language model likelihood based on the corpus."
-                )
-
-                ng_c1, ng_c2 = st.columns(2)
-                with ng_c1:
-                    st.markdown("##### **Extracted Bigrams (2-Word Sequences)**")
-                    st.write(ngram_prob_info["target_bigrams"] if ngram_prob_info["target_bigrams"] else "Insufficient tokens for bigrams.")
-
-                    st.markdown("##### **Statistical Sequence Metrics**")
-                    st.write(f"- **Vocabulary Size ($V$):** `{ngram_prob_info['vocab_size']}` unique words")
-                    st.write(f"- **Log Sentence Likelihood:** `{ngram_prob_info['sentence_log_prob']}`")
-                    st.write(f"- **Perplexity Score:** `{ngram_prob_info['perplexity']}` (Lower indicates more common phrasing)")
-
-                with ng_c2:
-                    st.markdown("##### **Laplace-Smoothed Bigram Probabilities**")
-                    if ngram_prob_info["bigram_details"]:
-                        st.dataframe(pd.DataFrame(ngram_prob_info["bigram_details"]), use_container_width=True)
-                    else:
-                        st.write("No bigram details available.")
-
-            # TAB 4: NAMED ENTITY RECOGNITION
-            with tab_ner:
-                st.subheader("Named Entity Recognition (NER)")
-                st.caption(f"Engine: {ner_result['engine']}")
-                if ner_result["entities"]:
-                    ent_df = pd.DataFrame(ner_result["entities"])[["text", "label", "description"]]
-                    ent_df.columns = ["Entity Token", "Entity Type", "Linguistic Description"]
-                    st.dataframe(ent_df, use_container_width=True)
-
-                    if ner_result.get("html"):
-                        st.markdown("##### **Visual Entity Annotations**")
-                        st.components.v1.html(ner_result["html"], height=130, scrolling=True)
+            with col_chk:
+                st.markdown("##### **Syntactic Chunks (Shallow Parsing)**")
+                st.caption(f"Parser Engine: {chunks_info.get('engine', 'NLTK')}")
+                if chunks_info["chunks"]:
+                    chk_df = pd.DataFrame(chunks_info["chunks"])[["phrase", "type", "description"]]
+                    chk_df.columns = ["Extracted Phrase", "Chunk Type", "Semantic Function"]
+                    st.dataframe(chk_df, use_container_width=True, height=280)
                 else:
-                    st.info("No specific named entities (persons, locations, dates, currency) detected in this text.")
+                    st.info("No multi-word phrase chunks detected in this input.")
+
+        # TAB 3: N-GRAMS & LANGUAGE MODELING
+        with tab_ngram:
+            st.subheader("N-Gram Representation & Sequence Probability")
+            st.markdown(
+                "Extracts unigram and bigram sequences and calculates statistical language model likelihood based on the corpus."
+            )
+
+            ng_c1, ng_c2 = st.columns(2)
+            with ng_c1:
+                st.markdown("##### **Extracted Bigrams (2-Word Sequences)**")
+                st.write(ngram_prob_info["target_bigrams"] if ngram_prob_info["target_bigrams"] else "Insufficient tokens for bigrams.")
+
+                st.markdown("##### **Statistical Sequence Metrics**")
+                st.write(f"- **Vocabulary Size ($V$):** `{ngram_prob_info['vocab_size']}` unique words")
+                st.write(f"- **Log Sentence Likelihood:** `{ngram_prob_info['sentence_log_prob']}`")
+                st.write(f"- **Perplexity Score:** `{ngram_prob_info['perplexity']}` (Lower indicates more common phrasing)")
+
+            with ng_c2:
+                st.markdown("##### **Laplace-Smoothed Bigram Probabilities**")
+                if ngram_prob_info["bigram_details"]:
+                    st.dataframe(pd.DataFrame(ngram_prob_info["bigram_details"]), use_container_width=True)
+                else:
+                    st.write("No bigram details available.")
+
+        # TAB 4: NAMED ENTITY RECOGNITION
+        with tab_ner:
+            st.subheader("Named Entity Recognition (NER)")
+            st.caption(f"Engine: {ner_result['engine']}")
+            if ner_result["entities"]:
+                ent_df = pd.DataFrame(ner_result["entities"])[["text", "label", "description"]]
+                ent_df.columns = ["Entity Token", "Entity Type", "Linguistic Description"]
+                st.dataframe(ent_df, use_container_width=True)
+
+                if ner_result.get("html"):
+                    st.markdown("##### **Visual Entity Annotations**")
+                    st.components.v1.html(ner_result["html"], height=130, scrolling=True)
+            else:
+                st.info("No specific named entities (persons, locations, dates, currency) detected in this text.")
 
 
 # -----------------------------------------------------------------------------
