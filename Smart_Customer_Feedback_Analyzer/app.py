@@ -117,6 +117,20 @@ st.markdown("""
         padding: 12px 18px;
         border-radius: 0 8px 8px 0;
         margin-bottom: 15px;
+        color: #202124;
+    }
+    .viva-card b, .viva-card .faq-question {
+        color: #202124 !important;
+        font-weight: 700;
+        font-size: 15px;
+        display: block;
+        margin-bottom: 6px;
+    }
+    .viva-card .faq-answer {
+        color: #334155 !important;
+        font-size: 14px;
+        line-height: 1.5;
+        display: block;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -897,7 +911,7 @@ elif nav_option == "ℹ️ About Project & Architecture":
 
     viva_tab1, viva_tab2, viva_tab3 = st.tabs([
         "🏗️ Architecture & Modules",
-        "🎓 Viva Q&A Guide",
+        "FAQ",
         "⚠️ Limitations & Future Scope"
     ])
 
@@ -933,7 +947,7 @@ elif nav_option == "ℹ️ About Project & Architecture":
         """)
 
     with viva_tab2:
-        st.subheader("Technical Questions & Answers for Project Viva")
+        st.subheader("Frequently Asked Questions (FAQ)")
 
         viva_qa = [
             (
@@ -965,8 +979,8 @@ elif nav_option == "ℹ️ About Project & Architecture":
         for q, a in viva_qa:
             st.markdown(f"""
             <div class="viva-card">
-                <b>{q}</b><br>
-                <span style="color: #334155;">{a}</span>
+                <b class="faq-question" style="color: #202124; font-weight: 700; font-size: 15px; margin-bottom: 6px; display: block;">{q}</b>
+                <span class="faq-answer" style="color: #334155; font-size: 14px; line-height: 1.5; display: block;">{a}</span>
             </div>
             """, unsafe_allow_html=True)
 
